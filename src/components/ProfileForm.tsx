@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserProfile } from '@/types';
-import { Save, X, User as UserIcon, Mail, Phone, Sparkles } from 'lucide-react';
+import { Save, X, User as UserIcon, Mail, Phone, Sparkles, Trash2 } from 'lucide-react';
 
 interface ProfileFormProps {
   onSuccess: () => void;
@@ -19,6 +19,8 @@ export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -63,6 +65,27 @@ export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
       console.error(err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) throw new Error('Failed to delete account');
+
+      // Redirect to sign out after successful deletion
+      window.location.href = '/api/auth/signout';
+    } catch (err) {
+      setError('Failed to delete account');
+      console.error(err);
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -190,7 +213,7 @@ export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
             type="button"
             onClick={onCancel}
             className="profile-btn-secondary"
-            disabled={saving}
+            disabled={saving || deleting}
           >
             <X size={18} />
             Cancel
@@ -198,7 +221,7 @@ export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
           <button
             type="submit"
             className="profile-btn-primary"
-            disabled={saving}
+            disabled={saving || deleting}
           >
             {saving ? (
               <>
@@ -212,6 +235,60 @@ export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
               </>
             )}
           </button>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="profile-danger-zone">
+          <div className="profile-section-header">
+            <h3 className="profile-section-title" style={{ color: '#ef4444' }}>Danger Zone</h3>
+            <p className="profile-section-desc">Permanent actions that cannot be undone</p>
+          </div>
+
+          {!showDeleteConfirm ? (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="profile-btn-danger"
+              disabled={saving || deleting}
+            >
+              <Trash2 size={18} />
+              Delete Account
+            </button>
+          ) : (
+            <div className="profile-delete-confirm">
+              <p className="profile-delete-warning">
+                ⚠️ <strong>Warning:</strong> This will permanently delete your account, all projects, resources, APIs, and generated data. This action cannot be undone.
+              </p>
+              <div className="profile-delete-actions">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="profile-btn-secondary"
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  className="profile-btn-danger-confirm"
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <>
+                      <div className="profile-btn-spinner"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={18} />
+                      Yes, Delete Everything
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </form>
     </div>

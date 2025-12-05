@@ -1,9 +1,85 @@
 'use client';
 
+import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { Sparkles, Zap, Shield, Code } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Sparkles, Zap, Shield, Code, Mail, Lock, User, ArrowRight } from 'lucide-react';
 
 export default function SignIn() {
+    const router = useRouter();
+    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        mobile: '',
+    });
+
+    const handleCredentialsSignIn = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const result = await signIn('credentials', {
+                email: formData.email,
+                password: formData.password,
+                redirect: false,
+            });
+
+            if (result?.error) {
+                setError(result.error);
+            } else {
+                router.push('/');
+            }
+        } catch (err) {
+            setError('An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSignUp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.error || 'Failed to create account');
+                return;
+            }
+
+            // Auto sign in after successful signup
+            const result = await signIn('credentials', {
+                email: formData.email,
+                password: formData.password,
+                redirect: false,
+            });
+
+            if (result?.error) {
+                setError('Account created but sign in failed. Please try signing in manually.');
+            } else {
+                router.push('/');
+            }
+        } catch (err) {
+            setError('An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="signin-page">
             {/* Background Elements */}
@@ -63,12 +139,18 @@ export default function SignIn() {
                 <div className="signin-card-wrapper">
                     <div className="signin-card">
                         <div className="signin-card-header">
-                            <h2 className="signin-card-title">Welcome back</h2>
+                            <h2 className="signin-card-title">
+                                {mode === 'signin' ? 'Welcome back' : 'Create account'}
+                            </h2>
                             <p className="signin-card-subtitle">
-                                Sign in to continue to your workspace
+                                {mode === 'signin' 
+                                    ? 'Sign in to continue to your workspace'
+                                    : 'Get started with your free account'
+                                }
                             </p>
                         </div>
 
+                        {/* Google Sign In */}
                         <button
                             onClick={() => signIn('google', { callbackUrl: '/' })}
                             className="signin-google-btn"
@@ -95,7 +177,105 @@ export default function SignIn() {
                         </button>
 
                         <div className="signin-divider">
-                            <span>Trusted by developers worldwide</span>
+                            <span>or {mode === 'signin' ? 'sign in' : 'sign up'} with email</span>
+                        </div>
+
+                        {/* Email/Password Form */}
+                        <form onSubmit={mode === 'signin' ? handleCredentialsSignIn : handleSignUp}>
+                            {error && (
+                                <div className="signin-error">
+                                    {error}
+                                </div>
+                            )}
+
+                            {mode === 'signup' && (
+                                <div className="signin-form-row">
+                                    <div className="signin-input-group">
+                                        <User size={18} className="signin-input-icon" />
+                                        <input
+                                            type="text"
+                                            placeholder="First Name"
+                                            className="signin-input"
+                                            value={formData.firstName}
+                                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="signin-input-group">
+                                        <User size={18} className="signin-input-icon" />
+                                        <input
+                                            type="text"
+                                            placeholder="Last Name"
+                                            className="signin-input"
+                                            value={formData.lastName}
+                                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="signin-input-group">
+                                <Mail size={18} className="signin-input-icon" />
+                                <input
+                                    type="email"
+                                    placeholder="Email address"
+                                    className="signin-input"
+                                    required
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="signin-input-group">
+                                <Lock size={18} className="signin-input-icon" />
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    className="signin-input"
+                                    required
+                                    minLength={8}
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                />
+                            </div>
+
+                            {mode === 'signup' && (
+                                <p className="signin-password-hint">
+                                    Password must be at least 8 characters with letters and numbers
+                                </p>
+                            )}
+
+                            <button
+                                type="submit"
+                                className="signin-submit-btn"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <span>Please wait...</span>
+                                ) : (
+                                    <>
+                                        <span>{mode === 'signin' ? 'Sign In' : 'Create Account'}</span>
+                                        <ArrowRight size={18} />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="signin-mode-toggle">
+                            <span>
+                                {mode === 'signin' 
+                                    ? "Don't have an account?" 
+                                    : 'Already have an account?'
+                                }
+                            </span>
+                            <button
+                                onClick={() => {
+                                    setMode(mode === 'signin' ? 'signup' : 'signin');
+                                    setError('');
+                                }}
+                                className="signin-link"
+                            >
+                                {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                            </button>
                         </div>
 
                         <p className="signin-footer-text">

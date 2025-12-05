@@ -43,11 +43,17 @@ export interface Project {
 }
 
 export interface UserProfile {
-  email: string; // Primary key (from Google auth)
+  email: string; // Primary key (from Google auth or credentials)
   firstName?: string;
   lastName?: string;
   mobile?: string;
-  updatedAt: string;
+  password?: string; // Hashed password for credentials login
+  role?: 'user' | 'admin';
+  isEmailVerified?: boolean;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Simple in-memory DB structure

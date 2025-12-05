@@ -6,6 +6,11 @@ export interface IUserProfile extends Document {
   firstName?: string;
   lastName?: string;
   mobile?: string;
+  password?: string; // Hashed password for credentials login
+  role?: 'user' | 'admin';
+  isEmailVerified?: boolean;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +20,11 @@ const UserProfileSchema = new Schema<IUserProfile>({
   firstName: String,
   lastName: String,
   mobile: String,
+  password: String, // For credentials-based login
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  isEmailVerified: { type: Boolean, default: false },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
 }, { timestamps: true });
 
 export const UserProfile: Model<IUserProfile> = 
