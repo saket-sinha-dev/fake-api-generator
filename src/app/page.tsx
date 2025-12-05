@@ -10,7 +10,8 @@ import ResourceList from '@/components/ResourceList';
 import ProjectForm from '@/components/ProjectForm';
 import ProjectList from '@/components/ProjectList';
 import ProfileForm from '@/components/ProfileForm';
-import { Plus, ArrowLeft, LogOut, User } from 'lucide-react';
+import AdminUserManagement from '@/components/AdminUserManagement';
+import { Plus, ArrowLeft, LogOut, User, Shield } from 'lucide-react';
 
 type Tab = 'apis' | 'resources';
 
@@ -21,7 +22,8 @@ export default function Home() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>(undefined);
   const [showProfile, setShowProfile] = useState(false);
-  const [userProfile, setUserProfile] = useState<{firstName?: string; lastName?: string} | null>(null);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [userProfile, setUserProfile] = useState<{firstName?: string; lastName?: string; role?: 'user' | 'admin'} | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>('apis');
   const [apis, setApis] = useState<MockApi[]>([]);
@@ -77,7 +79,7 @@ export default function Home() {
       const res = await fetch('/api/profile');
       if (res.ok) {
         const data = await res.json();
-        setUserProfile({ firstName: data.firstName, lastName: data.lastName });
+        setUserProfile({ firstName: data.firstName, lastName: data.lastName, role: data.role });
       }
     } catch (err) {
       console.error('Failed to fetch user profile:', err);
@@ -179,6 +181,15 @@ export default function Home() {
                         Hi, <strong>{userProfile.firstName} {userProfile.lastName}</strong>!
                       </span>
                     )}
+                    {userProfile?.role === 'admin' && (
+                      <button
+                        onClick={() => setShowAdmin(true)}
+                        className="icon-btn"
+                        title="Admin Panel"
+                      >
+                        <Shield size={18} />
+                      </button>
+                    )}
                     <button
                       onClick={() => setShowProfile(true)}
                       className="icon-btn"
@@ -237,6 +248,18 @@ export default function Home() {
                   }}
                   onCancel={() => setShowProfile(false)}
                 />
+              </div>
+            )}
+
+            {showAdmin && (
+              <div className="mb-8">
+                <div className="card">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold">Admin Panel</h3>
+                    <button onClick={() => setShowAdmin(false)} className="btn-secondary">Close</button>
+                  </div>
+                  <AdminUserManagement />
+                </div>
               </div>
             )}
 

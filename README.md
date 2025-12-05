@@ -89,19 +89,66 @@ A powerful, feature-rich mock API generator with resource management, data gener
 - Support for dynamic segments (`:id`, `:slug`, etc.)
 - Path-to-regexp matching for flexible routing
 
-## 📦 Installation
+## 📦 Quick Start
+
+### 1. Installation
 
 ```bash
 npm install
 ```
 
-## 🏃 Running the App
+### 2. Configure Environment
+
+```bash
+cp env.example .env
+# Edit .env with your credentials
+```
+
+**Required environment variables:**
+- `MONGODB_URI` - MongoDB connection string ([setup guide](./MONGODB_SETUP.md))
+- `AUTH_SECRET` - Generate with `openssl rand -base64 32`
+- `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET` - ([setup guide](./GOOGLE_AUTH_SETUP.md))
+
+**Optional (for email features):**
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` - Email service configuration
+- `ADMIN_EMAIL` - Email for first admin user
+
+See [AUTHENTICATION_SETUP.md](./AUTHENTICATION_SETUP.md) for detailed setup instructions.
+
+### 3. Initialize Admin User
+
+```bash
+npm run init-admin
+```
+
+This creates the first admin user and sends credentials via email (if configured).
+
+### 4. Start Development Server
 
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 🔐 Authentication
+
+The app supports multiple authentication methods:
+
+- **Google OAuth** - One-click sign in with Google
+- **Email/Password** - Traditional signup and login
+- **Admin System** - Role-based access control
+
+**Sign up/Sign in:** `/auth/signin`
+
+**Features:**
+- Secure password hashing with bcryptjs
+- Password reset via email
+- Welcome emails for new users
+- Admin credential generation
+- Role management (user/admin)
+
+See [AUTHENTICATION_SETUP.md](./AUTHENTICATION_SETUP.md) for complete authentication documentation.
 
 ## 📖 Usage Guide
 
