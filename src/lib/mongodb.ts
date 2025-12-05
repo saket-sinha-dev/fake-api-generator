@@ -16,7 +16,10 @@ async function connectDB() {
   const MONGODB_URI = process.env.MONGODB_URI;
   
   if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env file');
+    const errorMsg = process.env.NODE_ENV === 'production'
+      ? 'Please define the MONGODB_URI environment variable in your hosting platform (Render, Vercel, etc.)'
+      : 'Please define the MONGODB_URI environment variable inside .env file';
+    throw new Error(errorMsg);
   }
 
   if (cached.conn) {
