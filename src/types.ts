@@ -40,7 +40,8 @@ export interface Project {
 
 export interface UserProfile {
   email: string; // Primary key (from Google auth)
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   mobile?: string;
   updatedAt: string;
 }

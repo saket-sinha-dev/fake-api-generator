@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserProfile } from '@/types';
-import { Save, X, User as UserIcon } from 'lucide-react';
+import { Save, X, User as UserIcon, Mail, Phone, Sparkles } from 'lucide-react';
 
 interface ProfileFormProps {
   onSuccess: () => void;
@@ -12,7 +12,8 @@ interface ProfileFormProps {
 export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
   const [profile, setProfile] = useState<UserProfile>({
     email: '',
-    name: '',
+    firstName: '',
+    lastName: '',
     mobile: '',
     updatedAt: '',
   });
@@ -48,7 +49,8 @@ export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: profile.name,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
           mobile: profile.mobile,
         }),
       });
@@ -66,88 +68,150 @@ export default function ProfileForm({ onSuccess, onCancel }: ProfileFormProps) {
 
   if (loading) {
     return (
-      <div className="card">
-        <div className="p-6 text-center text-muted">Loading profile...</div>
+      <div className="profile-card-modern">
+        <div className="profile-loading">
+          <div className="profile-loading-spinner"></div>
+          <p>Loading your profile...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="flex items-center gap-3">
-          <UserIcon size={20} className="text-primary" />
-          <div>
-            <h2 className="font-semibold">Profile Settings</h2>
-            <p className="text-sm text-muted mt-1">Update your profile information</p>
+    <div className="profile-card-modern">
+      {/* Header Section */}
+      <div className="profile-header-gradient">
+        <div className="profile-header-content">
+          <div className="profile-avatar-large">
+            <UserIcon size={40} />
+          </div>
+          <div className="profile-header-text">
+            <h1 className="profile-title">
+              <Sparkles size={24} className="profile-sparkle" />
+              My Profile
+            </h1>
+            <p className="profile-subtitle">Manage your personal information</p>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="card-body">
-          <div className="form-group">
-            <label className="form-label">Email (from Google)</label>
+      <form onSubmit={handleSubmit} className="profile-form-modern">
+        {/* Personal Information Section */}
+        <div className="profile-section">
+          <div className="profile-section-header">
+            <h3 className="profile-section-title">Personal Information</h3>
+            <p className="profile-section-desc">Your name and contact details</p>
+          </div>
+
+          <div className="profile-fields-grid">
+            <div className="profile-field-wrapper">
+              <label className="profile-label">
+                <UserIcon size={16} />
+                First Name
+              </label>
+              <input
+                type="text"
+                className="profile-input"
+                placeholder="Enter your first name"
+                value={profile.firstName || ''}
+                onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+                maxLength={50}
+              />
+            </div>
+
+            <div className="profile-field-wrapper">
+              <label className="profile-label">
+                <UserIcon size={16} />
+                Last Name
+              </label>
+              <input
+                type="text"
+                className="profile-input"
+                placeholder="Enter your last name"
+                value={profile.lastName || ''}
+                onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+                maxLength={50}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Information Section */}
+        <div className="profile-section">
+          <div className="profile-section-header">
+            <h3 className="profile-section-title">Contact Information</h3>
+            <p className="profile-section-desc">How we can reach you</p>
+          </div>
+
+          <div className="profile-field-wrapper">
+            <label className="profile-label">
+              <Mail size={16} />
+              Email Address
+            </label>
             <input
               type="email"
-              className="form-input"
+              className="profile-input profile-input-disabled"
               value={profile.email}
               disabled
             />
-            <p className="text-xs text-muted mt-1">Your email cannot be changed</p>
+            <p className="profile-field-hint">
+              <span className="profile-lock-icon">🔒</span>
+              Your email is provided by Google and cannot be changed
+            </p>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Enter your full name"
-              value={profile.name || ''}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-              maxLength={100}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Mobile Number</label>
+          <div className="profile-field-wrapper">
+            <label className="profile-label">
+              <Phone size={16} />
+              Mobile Number
+            </label>
             <input
               type="tel"
-              className="form-input"
-              placeholder="Enter your mobile number"
+              className="profile-input"
+              placeholder="+1 (555) 123-4567"
               value={profile.mobile || ''}
               onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
               maxLength={20}
             />
+            <p className="profile-field-hint">We'll never share your number with anyone</p>
           </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
-            </div>
-          )}
         </div>
 
-        <div className="card-footer">
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn btn-secondary"
-              disabled={saving}
-            >
-              <X size={18} className="mr-2" />
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={saving}
-            >
-              <Save size={18} className="mr-2" />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
+        {error && (
+          <div className="profile-error">
+            <span className="profile-error-icon">⚠️</span>
+            {error}
           </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="profile-actions">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="profile-btn-secondary"
+            disabled={saving}
+          >
+            <X size={18} />
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="profile-btn-primary"
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <div className="profile-btn-spinner"></div>
+                Saving Changes...
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                Save Changes
+              </>
+            )}
+          </button>
         </div>
       </form>
     </div>
