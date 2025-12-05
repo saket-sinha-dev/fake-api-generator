@@ -1,53 +1,73 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { Project } from '@/types';
-
-const PROJECTS_FILE = path.join(process.cwd(), 'data', 'projects.json');
-
-async function getProjects(): Promise<Project[]> {
-    try {
-        const data = await fs.readFile(PROJECTS_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-async function saveProjects(projects: Project[]) {
-    await fs.writeFile(PROJECTS_FILE, JSON.stringify(projects, null, 2));
-}
+import { auth } from '@/auth';
+import connectDB from '@/lib/mongodb';
+import { Project } from '@/models';
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const projects = await getProjects();
-    const filteredProjects = projects.filter(p => p.id !== id);
+    try {
+        const session = await auth();
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-    if (projects.length === filteredProjects.length) {
-        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        const { id } = await params;
+        await connectDB();
+
+        const project = await Project.findOne({ id });
+
+        if (!project) {
+            return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        }
+
+        // Only owner can delete
+        if (project.userId !== session.user.email) {
+            return NextResponse.json({ error: 'Only project owner can delete' }, { status: 403 });
+        }
+
+        await Project.deleteOne({ id });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting project:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    await saveProjects(filteredProjects);
-    return NextResponse.json({ success: true });
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const body = await request.json();
-    const projects = await getProjects();
-    const index = projects.findIndex(p => p.id === id);
+    try {
+        const session = await auth();
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-    if (index === -1) {
-        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        const { id } = await params;
+        const body = await request.json();
+        await connectDB();
+
+        const project = await Project.findOne({ id });
+
+        if (!project) {
+            return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        }
+
+        const userEmail = session.user.email;
+
+        // Check if user has access (owner or collaborator)
+        const hasAccess = project.userId === userEmail || 
+                         (project.collaborators && project.collaborators.includes(userEmail));
+
+        if (!hasAccess) {
+            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+        }
+
+        const updatedProject = await Project.findOneAndUpdate(
+            { id },
+            { ...body, updatedAt: new Date() },
+            { new: true }
+        );
+
+        return NextResponse.json(updatedProject);
+    } catch (error) {
+        console.error('Error updating project:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    const updatedProject = {
-        ...projects[index],
-        ...body,
-        updatedAt: new Date().toISOString()
-    };
-    projects[index] = updatedProject;
-    await saveProjects(projects);
-
-    return NextResponse.json(updatedProject);
 }

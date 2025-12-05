@@ -19,10 +19,19 @@ A powerful, feature-rich mock API generator with resource management, data gener
   - `PUT /api/v1/{resource}/:id` - Update item
   - `DELETE /api/v1/{resource}/:id` - Delete item
 
-### 3. **Query Parameters Support**
+### 3. **Advanced Query Parameters Support**
 - **Pagination**: `?_page=1&_limit=10`
-- **Sorting**: `?_sort=name&_order=asc` (or `desc`)
+- **Sorting**: `?_sort=name&_order=asc` (or `desc`) - Supports multiple fields: `?_sort=age,name&_order=desc,asc`
 - **Filtering**: `?fieldName=value` (supports partial string matching)
+- **Comparison Operators**:
+  - `?age_gte=18` - Greater than or equal
+  - `?age_lte=65` - Less than or equal  
+  - `?age_gt=18` - Greater than
+  - `?age_lt=65` - Less than
+  - `?age_ne=25` - Not equal
+- **Full-text Search**: `?_search=keyword` - Searches across all fields
+- **Embed Relations**: `?_embed=posts` - Include related child resources (e.g., user's posts)
+- **Expand Relations**: `?_expand=user` - Include parent resource (e.g., post's user)
 
 ### 4. **Request Body Handling**
 - POST requests accept JSON body to create new items
@@ -50,9 +59,13 @@ A powerful, feature-rich mock API generator with resource management, data gener
 - Sort by any field using `_sort` parameter
 - Control order with `_order=asc` or `_order=desc`
 
-### 10. **Filtering**
+### 10. **Advanced Filtering**
 - Filter by any field using query parameters
 - String fields support partial matching (case-insensitive)
+- Number fields support comparison operators (_gte, _lte, _gt, _lt, _ne)
+- Boolean fields support exact matching
+- Array fields support "contains" matching
+- Full-text search across all fields with `_search` parameter
 
 ### 11. **Customizable Responses**
 - Custom API tab for fully customizable endpoints
@@ -61,7 +74,7 @@ A powerful, feature-rich mock API generator with resource management, data gener
 
 ### 12. **Collaboration** (Foundation)
 - JSON-based storage for easy sharing
-- Export/import capabilities (via file system)
+- Persistent storage in MongoDB Atlas (cloud) or local MongoDB
 
 ### 13. **Custom Endpoints**
 - Create completely custom APIs separate from resources
@@ -94,9 +107,14 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Creating a Resource
 
+**⚠️ Important:** Resources are for simple, single-segment names like `users`, `products`, `devices`. 
+For complex paths like `/devices/chart/assigned_dosimeters`, use **Custom APIs** instead.
+
 1. Navigate to the **Resources** tab
 2. Click **Create Resource**
-3. Enter a resource name (plural, e.g., "users")
+3. Enter a resource name (plural, e.g., "users", "devices", "products")
+   - ❌ Don't use: `devices/chart` (contains slash)
+   - ✅ Use: `devices`
 4. Add fields:
    - Field name (e.g., "firstName")
    - Data type (string, number, etc.)
@@ -162,13 +180,36 @@ DELETE http://localhost:3000/api/v1/users/{id}
 1. Navigate to the **Custom APIs** tab
 2. Click **Create New API**
 3. Fill in:
-   - API Name
-   - Path (e.g., `/custom/endpoint` or `/users/:id`)
-   - HTTP Method
-   - Status Code
-   - Response Body (JSON)
-   - (Optional) Webhook URL
+   - **API Name** (Required)
+   - **Path** (Required) - e.g., `/custom/endpoint` or `/users/:id`
+   - **HTTP Method** - GET, POST, PUT, DELETE, PATCH, etc.
+   - **Status Code** - 200, 201, 404, etc.
+   - **Request Body** (Optional) - Expected request payload format for POST/PUT/PATCH
+   - **Response Body** (Optional) - JSON response to return
+   - **Query Parameters** (Optional) - Add parameter name, example value, and mark as required
+   - **Webhook URL** (Optional)
 4. Click **Create API**
+
+**Example with Request Body and Query Parameters:**
+- Path: `/devices/chart/assigned_dosimeters`
+- Method: POST
+- Request Body:
+  ```json
+  {
+    "deviceId": "12345",
+    "userId": "user-001"
+  }
+  ```
+- Query Parameters:
+  - Parameter: `account_id`, Value: `559`, Required: ✓
+- Response Body:
+  ```json
+  {
+    "success": true,
+    "data": { "assigned": true }
+  }
+  ```
+- Full URL: `/api/v1/devices/chart/assigned_dosimeters?account_id=559`
 
 ### Relations Between Resources
 
@@ -191,15 +232,18 @@ Fields:
 - **Icons**: Lucide React
 - **Data Generation**: @faker-js/faker
 - **Routing**: path-to-regexp
-- **Storage**: Local JSON files
+- **Database**: MongoDB (via Mongoose)
+- **Authentication**: NextAuth.js v5
 
 ## 📁 Project Structure
 
 ```
-├── data/
-│   ├── apis.json          # Custom API definitions
-│   ├── resources.json     # Resource schemas
-│   └── database.json      # Generated data
+├── src/
+│   ├── models/
+│   │   └── index.ts       # Mongoose schemas (Projects, Resources, APIs, Database)
+│   ├── lib/
+│   │   ├── mongodb.ts     # Database connection
+│   │   └── dataGenerator.ts  # Faker.js data generation
 ├── src/
 │   ├── app/
 │   │   ├── api/
@@ -250,6 +294,126 @@ Predefined valid HTTP status codes ensure proper API behavior simulation.
     "totalPages": 5
   }
 }
+```
+
+### Query Parameters Guide
+
+#### Basic Filtering
+```bash
+# Filter by exact field value
+GET /api/v1/users?role=admin
+
+# String partial match (case-insensitive)
+GET /api/v1/users?name=john
+
+# Multiple filters (AND operation)
+GET /api/v1/users?role=admin&status=active
+```
+
+#### Comparison Operators
+```bash
+# Greater than or equal
+GET /api/v1/users?age_gte=18
+
+# Less than or equal
+GET /api/v1/products?price_lte=100
+
+# Greater than
+GET /api/v1/users?age_gt=18
+
+# Less than
+GET /api/v1/products?price_lt=100
+
+# Not equal
+GET /api/v1/users?status_ne=inactive
+
+# Combine operators
+GET /api/v1/products?price_gte=50&price_lte=200
+```
+
+#### Full-Text Search
+```bash
+# Search across all fields
+GET /api/v1/users?_search=john
+
+# Combine with filters
+GET /api/v1/users?_search=developer&status=active
+```
+
+#### Sorting
+```bash
+# Sort by single field (ascending)
+GET /api/v1/users?_sort=name
+
+# Sort descending
+GET /api/v1/users?_sort=age&_order=desc
+
+# Sort by multiple fields
+GET /api/v1/users?_sort=age,name&_order=desc,asc
+```
+
+#### Pagination
+```bash
+# Get first page (10 items)
+GET /api/v1/users?_page=1&_limit=10
+
+# Get second page (20 items per page)
+GET /api/v1/users?_page=2&_limit=20
+
+# Combine with filters and sorting
+GET /api/v1/users?role=admin&_sort=createdAt&_order=desc&_page=1&_limit=5
+```
+
+#### Relations
+
+**Embed**: Include child resources (one-to-many)
+```bash
+# Get users with their posts embedded
+GET /api/v1/users?_embed=posts
+
+# Response:
+{
+  "data": [
+    {
+      "id": "1",
+      "name": "John",
+      "posts": [
+        { "id": "1", "title": "Post 1", "userId": "1" },
+        { "id": "2", "title": "Post 2", "userId": "1" }
+      ]
+    }
+  ]
+}
+```
+
+**Expand**: Include parent resource (many-to-one)
+```bash
+# Get posts with user data expanded
+GET /api/v1/posts?_expand=user
+
+# Response:
+{
+  "data": [
+    {
+      "id": "1",
+      "title": "Post 1",
+      "userId": "1",
+      "user": { "id": "1", "name": "John" }
+    }
+  ]
+}
+```
+
+#### Complex Query Examples
+```bash
+# Active users aged 18-65, sorted by name, page 1
+GET /api/v1/users?status=active&age_gte=18&age_lte=65&_sort=name&_page=1&_limit=20
+
+# Products under $100 with "phone" in name, sorted by price
+GET /api/v1/products?price_lt=100&name=phone&_sort=price&_order=asc
+
+# Search for "developer" in all fields, active status only
+GET /api/v1/users?_search=developer&status=active&_sort=createdAt&_order=desc
 ```
 
 ## 🔮 Future Enhancements

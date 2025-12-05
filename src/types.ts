@@ -4,10 +4,12 @@ export interface MockApi {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
   statusCode: number;
   responseBody: any;
+  requestBody?: any; // Expected request body format
   createdAt: string;
   name: string;
   webhookUrl?: string;
   projectId: string; // Project association
+  queryParams?: { key: string; value: string; required: boolean }[]; // Query parameters
 }
 
 export type FieldType = 'string' | 'number' | 'boolean' | 'date' | 'email' | 'uuid' | 'image' | 'relation';
@@ -36,6 +38,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   userId: string; // Owner's email from session
+  collaborators?: string[]; // Array of collaborator emails
+  isPublic?: boolean; // If true, anyone can view (read-only)
 }
 
 export interface UserProfile {

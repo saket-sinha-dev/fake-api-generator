@@ -1,60 +1,50 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { Resource, Database } from '@/types';
 import { generateFieldValue } from '@/lib/dataGenerator';
-
-const RESOURCES_FILE = path.join(process.cwd(), 'data', 'resources.json');
-const DATABASE_FILE = path.join(process.cwd(), 'data', 'database.json');
-
-async function getResources(): Promise<Resource[]> {
-    try {
-        const data = await fs.readFile(RESOURCES_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-async function getDatabase(): Promise<Database> {
-    try {
-        const data = await fs.readFile(DATABASE_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return {};
-    }
-}
-
-async function saveDatabase(db: Database) {
-    await fs.writeFile(DATABASE_FILE, JSON.stringify(db, null, 2));
-}
+import connectDB from '@/lib/mongodb';
+import { Resource, Database } from '@/models';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const { count = 10 } = await request.json();
+    try {
+        const { id } = await params;
+        const { count = 10 } = await request.json();
 
-    const resources = await getResources();
-    const resource = resources.find(r => r.id === id);
+        await connectDB();
 
-    if (!resource) {
-        return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
-    }
+        const resource = await Resource.findOne({ id }).lean();
 
-    const db = await getDatabase();
-    const items = [];
-
-    for (let i = 0; i < count; i++) {
-        const item: any = { id: crypto.randomUUID() };
-
-        for (const field of resource.fields) {
-            item[field.name] = generateFieldValue(field, db);
+        if (!resource) {
+            return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
         }
 
-        items.push(item);
+        // Get all database records for relation lookups
+        const allDbRecords = await Database.find().lean();
+        const db: any = {};
+        allDbRecords.forEach(record => {
+            db[record.resourceName] = record.data;
+        });
+
+        const items = [];
+
+        for (let i = 0; i < count; i++) {
+            const item: any = { id: crypto.randomUUID() };
+
+            for (const field of resource.fields) {
+                item[field.name] = generateFieldValue(field, db);
+            }
+
+            items.push(item);
+        }
+
+        // Update or create the database record for this resource
+        await Database.findOneAndUpdate(
+            { resourceName: resource.name },
+            { resourceName: resource.name, data: items },
+            { upsert: true, new: true }
+        );
+
+        return NextResponse.json({ success: true, count: items.length, data: items });
+    } catch (error) {
+        console.error('Error generating data:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    db[resource.name] = items;
-    await saveDatabase(db);
-
-    return NextResponse.json({ success: true, count: items.length, data: items });
 }

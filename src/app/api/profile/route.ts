@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
 import { auth } from '@/auth';
-import { UserProfile } from '@/types';
-
-const dbPath = path.join(process.cwd(), 'data', 'database.json');
-
-async function readDB() {
-  const data = await fs.readFile(dbPath, 'utf-8');
-  return JSON.parse(data);
-}
-
-async function writeDB(data: any) {
-  await fs.writeFile(dbPath, JSON.stringify(data, null, 2));
-}
+import connectDB from '@/lib/mongodb';
+import { UserProfile } from '@/models';
 
 // GET /api/profile - Get current user's profile
 export async function GET() {
@@ -23,10 +11,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const db = await readDB();
-    const profile = db.userProfiles?.find(
-      (p: UserProfile) => p.email === session.user!.email
-    );
+    await connectDB();
+    const profile = await UserProfile.findOne({ email: session.user.email }).lean();
 
     if (!profile) {
       // Return default profile with session data
@@ -59,30 +45,19 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { firstName, lastName, mobile } = body;
 
-    const db = await readDB();
-    if (!db.userProfiles) {
-      db.userProfiles = [];
-    }
+    await connectDB();
 
-    const existingIndex = db.userProfiles.findIndex(
-      (p: UserProfile) => p.email === session.user!.email
+    const updatedProfile = await UserProfile.findOneAndUpdate(
+      { email: session.user.email },
+      {
+        email: session.user.email,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        mobile: mobile || '',
+        updatedAt: new Date(),
+      },
+      { upsert: true, new: true }
     );
-
-    const updatedProfile: UserProfile = {
-      email: session.user!.email,
-      firstName: firstName || '',
-      lastName: lastName || '',
-      mobile: mobile || '',
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (existingIndex >= 0) {
-      db.userProfiles[existingIndex] = updatedProfile;
-    } else {
-      db.userProfiles.push(updatedProfile);
-    }
-
-    await writeDB(db);
 
     return NextResponse.json(updatedProfile);
   } catch (error) {

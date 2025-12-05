@@ -76,17 +76,29 @@ export default function ApiList({ apis, onDelete, onEdit }: ApiListProps) {
                         <div className="bg-dark-muted p-3 rounded border border-white/5 flex items-center justify-between group">
                             <code className="text-xs text-blue truncate flex-1 mr-4">
                                 {fullUrl}
+                                {api.queryParams && api.queryParams.length > 0 && (
+                                    <span className="text-gray-500">
+                                        ?{api.queryParams.map(p => `${p.key}=${p.value}`).join('&')}
+                                    </span>
+                                )}
                             </code>
                             <div className="flex gap-2 group-hover-visible transition-opacity">
                                 <button
-                                    onClick={() => copyToClipboard(fullUrl, api.id)}
+                                    onClick={() => {
+                                        const urlWithParams = api.queryParams && api.queryParams.length > 0
+                                            ? `${fullUrl}?${api.queryParams.map(p => `${p.key}=${p.value}`).join('&')}`
+                                            : fullUrl;
+                                        copyToClipboard(urlWithParams, api.id);
+                                    }}
                                     className="text-gray hover:text-white"
                                     title="Copy URL"
                                 >
                                     {copiedId === api.id ? <Check size={16} /> : <Copy size={16} />}
                                 </button>
                                 <a
-                                    href={fullUrl}
+                                    href={api.queryParams && api.queryParams.length > 0
+                                        ? `${fullUrl}?${api.queryParams.map(p => `${p.key}=${p.value}`).join('&')}`
+                                        : fullUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-gray hover:text-white"
@@ -97,13 +109,42 @@ export default function ApiList({ apis, onDelete, onEdit }: ApiListProps) {
                             </div>
                         </div>
 
-
-                        <div>
-                            <div className="text-xs text-muted mb-1 uppercase tracking-wider">Response Preview</div>
-                            <div className="code-block max-h-32 overflow-y-auto text-xs">
-                                <pre>{JSON.stringify(api.responseBody, null, 2)}</pre>
+                        {api.queryParams && api.queryParams.length > 0 && (
+                            <div>
+                                <div className="text-xs text-muted mb-1 uppercase tracking-wider">Query Parameters</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {api.queryParams.map((param, idx) => (
+                                        <span key={idx} className="text-xs px-2 py-1 rounded bg-dark-muted text-muted">
+                                            <span className="text-blue-400">{param.key}</span>=<span className="text-green-400">{param.value}</span>
+                                            {param.required && <span className="text-red-400 ml-1">*</span>}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {api.requestBody && (
+                            <div>
+                                <div className="text-xs text-muted mb-1 uppercase tracking-wider">Request Body Example</div>
+                                <div className="code-block max-h-32 overflow-y-auto text-xs">
+                                    <pre>{JSON.stringify(api.requestBody, null, 2)}</pre>
+                                </div>
+                            </div>
+                        )}
+
+                        {api.responseBody !== null && (
+                            <div>
+                                <div className="text-xs text-muted mb-1 uppercase tracking-wider">Response Preview</div>
+                                <div className="code-block max-h-32 overflow-y-auto text-xs">
+                                    <pre>{JSON.stringify(api.responseBody, null, 2)}</pre>
+                                </div>
+                            </div>
+                        )}
+                        {api.responseBody === null && (
+                            <div className="text-xs text-muted italic">
+                                No response body (e.g., 204 No Content)
+                            </div>
+                        )}
                     </div>
                 );
             })}

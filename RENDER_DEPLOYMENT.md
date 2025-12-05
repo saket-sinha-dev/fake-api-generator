@@ -64,7 +64,7 @@ Render will automatically deploy when you push to GitHub. You can also trigger m
 ## Notes
 
 - **Free tier**: App will spin down after 15 minutes of inactivity (cold starts)
-- **Data persistence**: The `data/` directory will reset on each deploy. Consider using a database for production
+- **Data persistence**: Uses MongoDB Atlas cloud database (free tier available)
 - **Custom domain**: Available on paid plans
 
 ## Troubleshooting
@@ -77,9 +77,10 @@ Render will automatically deploy when you push to GitHub. You can also trigger m
 - Verify `NEXTAUTH_URL` matches your Render URL exactly
 - Check Google OAuth redirect URIs
 
-### Data loss on restart
-- Render's free tier uses ephemeral storage
-- Upgrade to persistent disk or use external database
+### Database connection issues
+- Verify `MONGODB_URI` is set correctly in environment variables
+- Check MongoDB Atlas network access allows connections from anywhere (0.0.0.0/0)
+- Ensure database user credentials are correct
 
 ## Monitoring
 

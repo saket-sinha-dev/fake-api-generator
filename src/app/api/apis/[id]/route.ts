@@ -1,49 +1,44 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { MockApi } from '@/types';
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'apis.json');
-
-async function getApis(): Promise<MockApi[]> {
-    try {
-        const data = await fs.readFile(DATA_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-async function saveApis(apis: MockApi[]) {
-    await fs.writeFile(DATA_FILE, JSON.stringify(apis, null, 2));
-}
+import connectDB from '@/lib/mongodb';
+import { API } from '@/models';
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const apis = await getApis();
-    const filteredApis = apis.filter(api => api.id !== id);
+    try {
+        const { id } = await params;
+        await connectDB();
 
-    if (apis.length === filteredApis.length) {
-        return NextResponse.json({ error: 'API not found' }, { status: 404 });
+        const result = await API.deleteOne({ id });
+
+        if (result.deletedCount === 0) {
+            return NextResponse.json({ error: 'API not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting API:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    await saveApis(filteredApis);
-    return NextResponse.json({ success: true });
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const body = await request.json();
-    const apis = await getApis();
-    const index = apis.findIndex(api => api.id === id);
+    try {
+        const { id } = await params;
+        const body = await request.json();
+        await connectDB();
 
-    if (index === -1) {
-        return NextResponse.json({ error: 'API not found' }, { status: 404 });
+        const updatedApi = await API.findOneAndUpdate(
+            { id },
+            { ...body, updatedAt: new Date() },
+            { new: true }
+        );
+
+        if (!updatedApi) {
+            return NextResponse.json({ error: 'API not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(updatedApi);
+    } catch (error) {
+        console.error('Error updating API:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    const updatedApi = { ...apis[index], ...body };
-    apis[index] = updatedApi;
-    await saveApis(apis);
-
-    return NextResponse.json(updatedApi);
 }

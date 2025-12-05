@@ -16,8 +16,10 @@ export default function ApiForm({ onSuccess, onCancel, initialData, projectId }:
         path: '',
         method: 'GET',
         statusCode: 200,
-        responseBody: '{\n  "message": "Hello World"\n}'
+        responseBody: '',
+        requestBody: ''
     });
+    const [queryParams, setQueryParams] = useState<{ key: string; value: string; required: boolean }[]>([]);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -28,8 +30,12 @@ export default function ApiForm({ onSuccess, onCancel, initialData, projectId }:
                 path: initialData.path,
                 method: initialData.method,
                 statusCode: initialData.statusCode,
-                responseBody: JSON.stringify(initialData.responseBody, null, 2)
+                responseBody: initialData.responseBody ? JSON.stringify(initialData.responseBody, null, 2) : '',
+                requestBody: initialData.requestBody ? JSON.stringify(initialData.requestBody, null, 2) : ''
             });
+            if (initialData.queryParams) {
+                setQueryParams(initialData.queryParams);
+            }
         }
     }, [initialData]);
 
@@ -39,12 +45,31 @@ export default function ApiForm({ onSuccess, onCancel, initialData, projectId }:
         setLoading(true);
 
         try {
-            // Validate JSON
-            let parsedBody;
-            try {
-                parsedBody = JSON.parse(formData.responseBody);
-            } catch (err) {
-                throw new Error('Invalid JSON in Response Body');
+            // Validate required fields
+            if (!formData.name.trim()) {
+                throw new Error('Missing required field: API Name');
+            }
+            if (!formData.path.trim()) {
+                throw new Error('Missing required field: Path');
+            }
+
+            // Validate JSON if provided
+            let parsedResponseBody = null;
+            if (formData.responseBody.trim()) {
+                try {
+                    parsedResponseBody = JSON.parse(formData.responseBody);
+                } catch (err) {
+                    throw new Error('Invalid JSON in Response Body. Check for syntax errors, missing commas, or quotes.');
+                }
+            }
+
+            let parsedRequestBody = null;
+            if (formData.requestBody.trim()) {
+                try {
+                    parsedRequestBody = JSON.parse(formData.requestBody);
+                } catch (err) {
+                    throw new Error('Invalid JSON in Request Body. Check for syntax errors, missing commas, or quotes.');
+                }
             }
 
             const url = initialData ? `/api/apis/${initialData.id}` : '/api/apis';
@@ -55,8 +80,10 @@ export default function ApiForm({ onSuccess, onCancel, initialData, projectId }:
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    responseBody: parsedBody,
-                    projectId
+                    responseBody: parsedResponseBody,
+                    requestBody: parsedRequestBody,
+                    projectId,
+                    queryParams: queryParams.filter(q => q.key.trim() !== '')
                 })
             });
 
@@ -143,14 +170,94 @@ export default function ApiForm({ onSuccess, onCancel, initialData, projectId }:
                 </div>
 
                 <div>
-                    <label className="label">Response Body (JSON)</label>
+                    <label className="label">Request Body (JSON) - Optional</label>
+                    <textarea
+                        className="input font-mono text-sm"
+                        rows={6}
+                        placeholder='{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'
+                        value={formData.requestBody}
+                        onChange={e => setFormData({ ...formData, requestBody: e.target.value })}
+                    />
+                    <p className="text-xs text-muted mt-1">Expected request body format for POST/PUT/PATCH requests</p>
+                </div>
+
+                <div>
+                    <label className="label">Response Body (JSON) - Optional</label>
                     <textarea
                         className="input font-mono text-sm"
                         rows={8}
+                        placeholder='{\n  "message": "Success"\n}'
                         value={formData.responseBody}
                         onChange={e => setFormData({ ...formData, responseBody: e.target.value })}
-                        required
                     />
+                    <p className="text-xs text-muted mt-1">Leave empty for no response body (e.g., 204 No Content)</p>
+                </div>
+
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="label">Query Parameters (Optional)</label>
+                        <button
+                            type="button"
+                            onClick={() => setQueryParams([...queryParams, { key: '', value: '', required: false }])}
+                            className="text-sm text-primary hover:underline"
+                        >
+                            + Add Parameter
+                        </button>
+                    </div>
+                    {queryParams.length === 0 ? (
+                        <p className="text-xs text-muted">No query parameters defined. Click "Add Parameter" to add one.</p>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {queryParams.map((param, index) => (
+                                <div key={index} className="flex gap-2 items-center">
+                                    <input
+                                        type="text"
+                                        className="input flex-1"
+                                        placeholder="Parameter name (e.g., account_id)"
+                                        value={param.key}
+                                        onChange={e => {
+                                            const updated = [...queryParams];
+                                            updated[index].key = e.target.value;
+                                            setQueryParams(updated);
+                                        }}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="input flex-1"
+                                        placeholder="Example value (e.g., 559)"
+                                        value={param.value}
+                                        onChange={e => {
+                                            const updated = [...queryParams];
+                                            updated[index].value = e.target.value;
+                                            setQueryParams(updated);
+                                        }}
+                                    />
+                                    <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                                        <input
+                                            type="checkbox"
+                                            checked={param.required}
+                                            onChange={e => {
+                                                const updated = [...queryParams];
+                                                updated[index].required = e.target.checked;
+                                                setQueryParams(updated);
+                                            }}
+                                        />
+                                        Required
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQueryParams(queryParams.filter((_, i) => i !== index))}
+                                        className="text-error hover:underline text-sm"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <p className="text-xs text-muted mt-2">
+                        Example: /devices/chart/assigned_dosimeters?account_id=559
+                    </p>
                 </div>
 
                 <div className="flex justify-end gap-2 mt-2">
