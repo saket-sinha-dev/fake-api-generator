@@ -68,13 +68,16 @@ Users must now create a project before they can create any mock APIs or resource
 }
 ```
 
-## 📁 New Files Created
+## 📁 Key Files
 
-1. **data/projects.json** - Stores all projects
-2. **src/app/api/projects/route.ts** - GET/POST projects
-3. **src/app/api/projects/[id]/route.ts** - PUT/DELETE individual project
-4. **src/components/ProjectForm.tsx** - Form to create projects
-5. **src/components/ProjectList.tsx** - Display project cards
+1. **src/models/index.ts** - Mongoose schemas for all entities (Projects, Resources, APIs, Database, UserProfile)
+2. **src/lib/mongodb.ts** - Database connection with caching
+3. **src/app/api/projects/route.ts** - GET/POST projects (MongoDB)
+4. **src/app/api/projects/[id]/route.ts** - PUT/DELETE individual project (MongoDB)
+5. **src/app/api/projects/[id]/collaborators/route.ts** - Manage collaborators
+6. **src/components/ProjectForm.tsx** - Form to create projects
+7. **src/components/ProjectList.tsx** - Display project cards
+8. **src/components/ShareModal.tsx** - Share project with collaborators
 
 ## 🔄 Modified Files
 

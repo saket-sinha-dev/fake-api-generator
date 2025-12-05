@@ -1,59 +1,51 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { MockApi } from '@/types';
-
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'apis.json');
-
-async function getApis(): Promise<MockApi[]> {
-    try {
-        const data = await fs.readFile(DATA_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-async function saveApis(apis: MockApi[]) {
-    await fs.writeFile(DATA_FILE, JSON.stringify(apis, null, 2));
-}
+import connectDB from '@/lib/mongodb';
+import { API } from '@/models';
 
 export async function GET() {
-    const apis = await getApis();
-    return NextResponse.json(apis);
+    try {
+        await connectDB();
+        const apis = await API.find().lean();
+        return NextResponse.json(apis);
+    } catch (error) {
+        console.error('Error fetching APIs:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
 }
 
 export async function POST(request: Request) {
-    const body = await request.json();
-    const { path: apiPath, method, statusCode, responseBody, name, webhookUrl, projectId } = body;
+    try {
+        const body = await request.json();
+        const { path: apiPath, method, statusCode, responseBody, name, webhookUrl, projectId, requestBody, queryParams } = body;
 
-    if (!apiPath || !method || !responseBody || !projectId) {
-        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        if (!apiPath || !method || !projectId) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        await connectDB();
+
+        // Check for duplicate path+method
+        const exists = await API.findOne({ path: apiPath, method });
+        if (exists) {
+            return NextResponse.json({ error: 'API endpoint already exists' }, { status: 409 });
+        }
+
+        const newApi = await API.create({
+            id: crypto.randomUUID(),
+            path: apiPath.startsWith('/') ? apiPath : `/${apiPath}`,
+            method,
+            statusCode: statusCode || 200,
+            responseBody,
+            name: name || 'Untitled API',
+            webhookUrl,
+            projectId,
+            requestBody,
+            queryParams,
+        });
+
+        return NextResponse.json(newApi, { status: 201 });
+    } catch (error) {
+        console.error('Error creating API:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    const apis = await getApis();
-
-    // Check for duplicate path+method
-    const exists = apis.find(api => api.path === apiPath && api.method === method);
-    if (exists) {
-        return NextResponse.json({ error: 'API endpoint already exists' }, { status: 409 });
-    }
-
-    const newApi: MockApi = {
-        id: crypto.randomUUID(),
-        path: apiPath.startsWith('/') ? apiPath : `/${apiPath}`,
-        method,
-        statusCode: statusCode || 200,
-        responseBody,
-        name: name || 'Untitled API',
-        webhookUrl,
-        projectId,
-        createdAt: new Date().toISOString(),
-    };
-
-    apis.push(newApi);
-    await saveApis(apis);
-
-    return NextResponse.json(newApi, { status: 201 });
 }

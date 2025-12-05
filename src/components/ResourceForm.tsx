@@ -59,8 +59,23 @@ export default function ResourceForm({ onSuccess, onCancel, initialData, project
         setLoading(true);
 
         try {
-            if (!name || fields.length === 0) {
-                throw new Error('Resource name and at least one field are required');
+            if (!name) {
+                throw new Error('Missing required field: Resource Name');
+            }
+            
+            if (fields.length === 0) {
+                throw new Error('At least one field is required. Click "Add Field" to add fields.');
+            }
+
+            // Validate resource name format
+            if (name.includes('/') || name.includes('\\') || name.includes(' ')) {
+                throw new Error('Resource name cannot contain slashes or spaces. Use simple names like "users", "devices", "products". For complex paths like "/devices/chart", use Custom APIs instead.');
+            }
+
+            // Validate that all fields have names
+            const emptyFields = fields.filter(f => !f.name.trim());
+            if (emptyFields.length > 0) {
+                throw new Error(`Missing field name for ${emptyFields.length} field(s). All fields must have a name.`);
             }
 
             const url = initialData ? `/api/resources/${initialData.id}` : '/api/resources';
@@ -101,12 +116,15 @@ export default function ResourceForm({ onSuccess, onCancel, initialData, project
                     <input
                         type="text"
                         className="input"
-                        placeholder="e.g. users, products"
+                        placeholder="e.g. users, products, devices"
                         value={name}
                         onChange={e => setName(e.target.value.toLowerCase())}
                         required
                     />
-                    <p className="text-xs text-muted mt-1">This will be your endpoint: /api/v1/{name || 'resource'}</p>
+                    <p className="text-xs text-muted mt-1">
+                        Endpoint: /api/v1/{name || 'resource'}<br />
+                        <span className="text-yellow-500">⚠️ No slashes allowed. For paths like "/devices/chart", use Custom APIs.</span>
+                    </p>
                 </div>
 
                 <div>

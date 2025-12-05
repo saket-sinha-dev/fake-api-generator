@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import "./signin.css";
 import "./profile.css";
+import "./share.css";
 
 const inter = Inter({ subsets: ["latin"] });
 

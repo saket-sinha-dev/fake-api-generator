@@ -59,10 +59,11 @@
 - Complete control over response structure
 - Location: `ApiForm.tsx`, `api/apis/route.ts`
 
-### 12. ✅ Collaboration (Foundation)
-- JSON-based storage for easy sharing
-- Files: `data/apis.json`, `data/resources.json`, `data/database.json`
-- Can be shared via git, file transfer, etc.
+### 12. ✅ Collaboration
+- MongoDB-based storage with multi-user support
+- Projects can have multiple collaborators
+- Owner and collaborator roles with permissions
+- Real-time collaboration via shared database
 
 ### 13. ✅ Custom Endpoints
 - Separate from resources

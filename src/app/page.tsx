@@ -263,6 +263,7 @@ export default function Home() {
                 onSelect={setSelectedProject}
                 onDelete={handleDeleteProject}
                 onEdit={handleEditProject}
+                onUpdate={fetchProjects}
               />
             )}
           </div>

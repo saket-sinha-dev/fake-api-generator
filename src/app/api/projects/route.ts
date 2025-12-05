@@ -1,61 +1,70 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { Project } from '@/types';
 import { auth } from '@/auth';
-
-const PROJECTS_FILE = path.join(process.cwd(), 'data', 'projects.json');
-
-async function getProjects(): Promise<Project[]> {
-    try {
-        const data = await fs.readFile(PROJECTS_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-async function saveProjects(projects: Project[]) {
-    await fs.writeFile(PROJECTS_FILE, JSON.stringify(projects, null, 2));
-}
+import connectDB from '@/lib/mongodb';
+import { Project } from '@/models';
 
 export async function GET() {
-    const projects = await getProjects();
-    return NextResponse.json(projects);
+    try {
+        const session = await auth();
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        await connectDB();
+
+        const userEmail = session.user.email;
+
+        // Find projects: user owns OR is a collaborator on
+        const projects = await Project.find({
+            $or: [
+                { userId: userEmail },
+                { collaborators: userEmail }
+            ]
+        }).lean();
+
+        return NextResponse.json(projects);
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
 }
 
 export async function POST(request: Request) {
-    const session = await auth();
-    if (!session?.user?.email) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    try {
+        const session = await auth();
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { name, description } = body;
+
+        if (!name) {
+            return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
+        }
+
+        await connectDB();
+
+        // Check for duplicate name for this user
+        const exists = await Project.findOne({ 
+            userId: session.user.email,
+            name: { $regex: new RegExp(`^${name}$`, 'i') }
+        });
+
+        if (exists) {
+            return NextResponse.json({ error: 'Project already exists' }, { status: 409 });
+        }
+
+        const newProject = await Project.create({
+            id: crypto.randomUUID(),
+            name,
+            description: description || '',
+            userId: session.user.email,
+        });
+
+        return NextResponse.json(newProject, { status: 201 });
+    } catch (error) {
+        console.error('Error creating project:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    const body = await request.json();
-    const { name, description } = body;
-
-    if (!name) {
-        return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
-    }
-
-    const projects = await getProjects();
-
-    // Check for duplicate name
-    const exists = projects.find(p => p.name.toLowerCase() === name.toLowerCase());
-    if (exists) {
-        return NextResponse.json({ error: 'Project already exists' }, { status: 409 });
-    }
-
-    const newProject: Project = {
-        id: crypto.randomUUID(),
-        name,
-        description: description || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        userId: session.user.email,
-    };
-
-    projects.push(newProject);
-    await saveProjects(projects);
-
-    return NextResponse.json(newProject, { status: 201 });
 }

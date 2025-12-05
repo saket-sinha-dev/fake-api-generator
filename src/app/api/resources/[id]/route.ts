@@ -1,49 +1,44 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { Resource } from '@/types';
-
-const RESOURCES_FILE = path.join(process.cwd(), 'data', 'resources.json');
-
-async function getResources(): Promise<Resource[]> {
-    try {
-        const data = await fs.readFile(RESOURCES_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-async function saveResources(resources: Resource[]) {
-    await fs.writeFile(RESOURCES_FILE, JSON.stringify(resources, null, 2));
-}
+import connectDB from '@/lib/mongodb';
+import { Resource } from '@/models';
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const resources = await getResources();
-    const filteredResources = resources.filter(r => r.id !== id);
+    try {
+        const { id } = await params;
+        await connectDB();
 
-    if (resources.length === filteredResources.length) {
-        return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+        const result = await Resource.deleteOne({ id });
+
+        if (result.deletedCount === 0) {
+            return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting resource:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    await saveResources(filteredResources);
-    return NextResponse.json({ success: true });
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const body = await request.json();
-    const resources = await getResources();
-    const index = resources.findIndex(r => r.id === id);
+    try {
+        const { id } = await params;
+        const body = await request.json();
+        await connectDB();
 
-    if (index === -1) {
-        return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+        const updatedResource = await Resource.findOneAndUpdate(
+            { id },
+            { ...body, updatedAt: new Date() },
+            { new: true }
+        );
+
+        if (!updatedResource) {
+            return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(updatedResource);
+    } catch (error) {
+        console.error('Error updating resource:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    const updatedResource = { ...resources[index], ...body };
-    resources[index] = updatedResource;
-    await saveResources(resources);
-
-    return NextResponse.json(updatedResource);
 }
