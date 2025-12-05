@@ -44,7 +44,21 @@ AUTH_SECRET=<generate with: openssl rand -base64 32>
 NEXTAUTH_URL=https://your-app-name.onrender.com
 GOOGLE_CLIENT_ID=<your-google-client-id>
 GOOGLE_CLIENT_SECRET=<your-google-client-secret>
+MONGODB_URI=<your-mongodb-atlas-connection-string>
+ADMIN_EMAIL=<your-admin-email@example.com>
 NODE_ENV=production
+```
+
+**Important:** All environment variables from your local `.env` file need to be added to Render's Environment section. The app cannot read `.env` files in production.
+
+### Optional Email Service Variables (for password reset & notifications):
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=<your-email@gmail.com>
+SMTP_PASS=<your-app-password>
+FROM_EMAIL=<your-email@gmail.com>
+APP_NAME=Fake API Generator
 ```
 
 ## Step 4: Update Google OAuth
@@ -77,10 +91,29 @@ Render will automatically deploy when you push to GitHub. You can also trigger m
 - Verify `NEXTAUTH_URL` matches your Render URL exactly
 - Check Google OAuth redirect URIs
 
+### "MONGODB_URI environment variable" Error
+**Symptom:** `CallbackRouteError: Please define the MONGODB_URI environment variable`
+
+**Solution:**
+1. Go to Render Dashboard → Your Service → **Environment** tab
+2. Click **Add Environment Variable**
+3. Add: `MONGODB_URI` = `mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority`
+4. Click **Save Changes**
+5. Render will automatically redeploy
+
+**Important:** Environment variables must be set in Render's dashboard, not in code. The `.env` file only works locally.
+
+### Credentials Login Fails (Email/Password)
+- Ensure `MONGODB_URI` is set in Render environment variables
+- Check `AUTH_SECRET` is configured
+- Verify MongoDB Atlas allows connections from all IPs (0.0.0.0/0)
+- Check Render logs for specific error messages
+
 ### Database connection issues
 - Verify `MONGODB_URI` is set correctly in environment variables
 - Check MongoDB Atlas network access allows connections from anywhere (0.0.0.0/0)
 - Ensure database user credentials are correct
+- Test connection string locally first
 
 ## Monitoring
 
