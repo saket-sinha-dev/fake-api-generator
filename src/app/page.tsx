@@ -21,6 +21,7 @@ export default function Home() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>(undefined);
   const [showProfile, setShowProfile] = useState(false);
+  const [userProfile, setUserProfile] = useState<{firstName?: string; lastName?: string} | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>('apis');
   const [apis, setApis] = useState<MockApi[]>([]);
@@ -68,7 +69,20 @@ export default function Home() {
 
   useEffect(() => {
     fetchProjects();
+    fetchUserProfile();
   }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const res = await fetch('/api/profile');
+      if (res.ok) {
+        const data = await res.json();
+        setUserProfile({ firstName: data.firstName, lastName: data.lastName });
+      }
+    } catch (err) {
+      console.error('Failed to fetch user profile:', err);
+    }
+  };
 
   useEffect(() => {
     if (selectedProject) {
@@ -160,7 +174,11 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 {session?.user && (
                   <>
-                    <span className="text-sm text-muted">{session.user.email}</span>
+                    {userProfile?.firstName && (
+                      <span className="user-greeting">
+                        Hi, <strong>{userProfile.firstName} {userProfile.lastName}</strong>!
+                      </span>
+                    )}
                     <button
                       onClick={() => setShowProfile(true)}
                       className="icon-btn"
@@ -169,7 +187,7 @@ export default function Home() {
                       {session.user.image ? (
                         <img
                           src={session.user.image}
-                          alt={session.user.name || 'User'}
+                          alt={`${userProfile?.firstName || session.user.name || 'User'}`}
                           className="w-8 h-8 rounded-full"
                         />
                       ) : (
@@ -213,7 +231,10 @@ export default function Home() {
             {showProfile && (
               <div className="mb-8">
                 <ProfileForm
-                  onSuccess={() => setShowProfile(false)}
+                  onSuccess={() => {
+                    setShowProfile(false);
+                    fetchUserProfile();
+                  }}
                   onCancel={() => setShowProfile(false)}
                 />
               </div>
@@ -278,21 +299,28 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-3">
               {session?.user && (
-                <button
-                  onClick={() => setShowProfile(true)}
-                  className="icon-btn"
-                  title="Profile"
-                >
-                  {session.user.image ? (
-                    <img
-                      src={session.user.image}
-                      alt={session.user.name || 'User'}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  ) : (
-                    <User size={18} />
+                <>
+                  {userProfile?.firstName && (
+                    <span className="user-greeting">
+                      Hi, <strong>{userProfile.firstName} {userProfile.lastName}</strong>!
+                    </span>
                   )}
-                </button>
+                  <button
+                    onClick={() => setShowProfile(true)}
+                    className="icon-btn"
+                    title="Profile"
+                  >
+                    {session.user.image ? (
+                      <img
+                        src={session.user.image}
+                        alt={`${userProfile?.firstName || session.user.name || 'User'}`}
+                        className="w-8 h-8 rounded-full"
+                      />
+                    ) : (
+                      <User size={18} />
+                    )}
+                  </button>
+                </>
               )}
               <button
                 onClick={() => signOut({ callbackUrl: '/auth/signin' })}

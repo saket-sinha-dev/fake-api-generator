@@ -30,9 +30,12 @@ export async function GET() {
 
     if (!profile) {
       // Return default profile with session data
+      const fullName = session.user.name || '';
+      const nameParts = fullName.split(' ');
       return NextResponse.json({
         email: session.user.email,
-        name: session.user.name || '',
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
         mobile: '',
         updatedAt: new Date().toISOString(),
       });
@@ -54,7 +57,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, mobile } = body;
+    const { firstName, lastName, mobile } = body;
 
     const db = await readDB();
     if (!db.userProfiles) {
@@ -67,7 +70,8 @@ export async function PUT(req: NextRequest) {
 
     const updatedProfile: UserProfile = {
       email: session.user!.email,
-      name: name || '',
+      firstName: firstName || '',
+      lastName: lastName || '',
       mobile: mobile || '',
       updatedAt: new Date().toISOString(),
     };
