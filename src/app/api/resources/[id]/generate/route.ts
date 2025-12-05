@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { generateFieldValue } from '@/lib/dataGenerator';
 import connectDB from '@/lib/mongodb';
 import { Resource, Database } from '@/models';
+import { ResourceField } from '@/types';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -29,7 +30,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             const item: any = { id: crypto.randomUUID() };
 
             for (const field of resource.fields) {
-                item[field.name] = generateFieldValue(field, db);
+                // Cast field to ResourceField to satisfy type checking
+                const typedField = field as unknown as ResourceField;
+                item[field.name] = generateFieldValue(typedField, db);
             }
 
             items.push(item);
