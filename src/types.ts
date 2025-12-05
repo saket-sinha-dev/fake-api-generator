@@ -34,6 +34,7 @@ export interface Project {
   name: string;
   description?: string;
   createdAt: string;
+  updatedAt: string;
   userId: string; // Owner's email from session
 }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 import { Project } from '@/types';
+import { auth } from '@/auth';
 
 const PROJECTS_FILE = path.join(process.cwd(), 'data', 'projects.json');
 
@@ -24,6 +25,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    const session = await auth();
+    if (!session?.user?.email) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, description } = body;
 
@@ -45,6 +51,7 @@ export async function POST(request: Request) {
         description: description || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        userId: session.user.email,
     };
 
     projects.push(newProject);
