@@ -1,3 +1,18 @@
+export interface ConditionalResponse {
+  condition: {
+    type: 'header' | 'query' | 'body' | 'dependentApi'; // Type of condition
+    key?: string; // Header/query/body key to check
+    operator: 'equals' | 'notEquals' | 'contains' | 'greaterThan' | 'lessThan' | 'exists';
+    value?: any; // Expected value
+    dependentApiId?: string; // ID of API to call first (for dependentApi type)
+    dependentApiPath?: string; // Path to check in dependent API response (e.g., "data.isEligible")
+  };
+  responseIfTrue: any; // Response when condition is true
+  responseIfFalse: any; // Response when condition is false
+  statusCodeIfTrue?: number; // Optional different status code when true
+  statusCodeIfFalse?: number; // Optional different status code when false
+}
+
 export interface MockApi {
   id: string;
   path: string;
@@ -10,6 +25,7 @@ export interface MockApi {
   webhookUrl?: string;
   projectId: string; // Project association
   queryParams?: { key: string; value: string; required: boolean }[]; // Query parameters
+  conditionalResponse?: ConditionalResponse; // Optional conditional logic
 }
 
 export type FieldType = 'string' | 'number' | 'boolean' | 'date' | 'email' | 'uuid' | 'image' | 'relation';
