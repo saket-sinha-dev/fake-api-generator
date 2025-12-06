@@ -47,7 +47,7 @@ const ProjectSchema = new Schema<IProject>({
   name: { type: String, required: true },
   description: String,
   userId: { type: String, required: true, index: true },
-  collaborators: [String],
+  collaborators: { type: [String], default: [] },
   isPublic: { type: Boolean, default: false },
 }, { timestamps: true });
 
@@ -133,11 +133,14 @@ const APISchema = new Schema<IAPI>({
   statusCode: { type: Number, required: true },
   requestBody: Schema.Types.Mixed,
   responseBody: Schema.Types.Mixed,
-  queryParams: [{
-    key: String,
-    value: String,
-    required: Boolean,
-  }],
+  queryParams: {
+    type: [{
+      key: String,
+      value: String,
+      required: Boolean,
+    }],
+    default: []
+  },
   webhookUrl: String,
   projectId: { type: String, required: true, index: true },
   conditionalResponse: {

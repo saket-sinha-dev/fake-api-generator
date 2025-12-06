@@ -537,7 +537,7 @@ export default function ResourceList({ resources, onDelete, onEdit: _onEdit }: R
                             </div>
                         </div>
 
-                        {resource.fields && resource.fields.length > 0 && (
+                        {resource.fields && Array.isArray(resource.fields) && resource.fields.length > 0 && (
                             <div className="animate-slide-up">
                                 <div className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider flex items-center gap-2">
                                     <span className="w-1 h-4 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full animate-pulse"></span>
