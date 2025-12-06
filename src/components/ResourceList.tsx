@@ -10,7 +10,7 @@ interface ResourceListProps {
     onEdit: (resource: Resource) => void;
 }
 
-export default function ResourceList({ resources, onDelete, onEdit }: ResourceListProps) {
+export default function ResourceList({ resources, onDelete, onEdit: _onEdit }: ResourceListProps) {
     const [generating, setGenerating] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [showTestModal, setShowTestModal] = useState(false);

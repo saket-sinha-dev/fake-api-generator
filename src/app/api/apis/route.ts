@@ -1,59 +1,148 @@
-import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import { API } from '@/models';
+import { 
+  successResponse, 
+  createdResponse, 
+  badRequestResponse, 
+  conflictResponse,
+  handleApiError 
+} from '@/lib/apiResponse';
+import { 
+  validateRequiredFields, 
+  validateApiPath, 
+  isValidHttpMethod,
+  isValidStatusCode,
+  sanitizeString 
+} from '@/lib/validation';
+import { logger } from '@/lib/logger';
+import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants';
 
 export async function GET() {
     try {
+        logger.logRequest('GET', '/api/apis');
+        
         await connectDB();
+        logger.logDbOperation('find', 'apis');
+        
         const apis = await API.find().lean();
-        return NextResponse.json(apis);
+        
+        logger.info(`Fetched ${apis.length} APIs`);
+        return successResponse(apis);
     } catch (error) {
-        console.error('Error fetching APIs:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        logger.error('Error fetching APIs', error);
+        return handleApiError(error);
     }
 }
 
 export async function POST(request: Request) {
     try {
+        logger.logRequest('POST', '/api/apis');
+        
         const body = await request.json();
-        const { path: apiPath, method, statusCode, responseBody, name, webhookUrl, projectId, requestBody, queryParams, conditionalResponse } = body;
+        const { 
+            path: apiPath, 
+            method, 
+            statusCode, 
+            responseBody, 
+            name, 
+            webhookUrl, 
+            projectId, 
+            requestBody, 
+            queryParams, 
+            conditionalResponse 
+        } = body;
 
-        console.log('📝 Creating API with conditionalResponse:', conditionalResponse ? 'YES' : 'NO');
-        if (conditionalResponse) {
-            console.log('🔍 Conditional Response:', JSON.stringify(conditionalResponse, null, 2));
+        logger.debug('Creating API', { 
+            path: apiPath, 
+            method, 
+            hasConditional: !!conditionalResponse 
+        });
+
+        // Validate required fields
+        const validation = validateRequiredFields(body, ['path', 'method', 'projectId']);
+        if (!validation.valid) {
+            logger.logValidationError('required_fields', validation.error || '');
+            return badRequestResponse(validation.error);
         }
 
-        if (!apiPath || !method || !projectId) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        // Normalize path (add leading slash if missing) - only if path exists
+        const normalizedPath = apiPath && typeof apiPath === 'string' && !apiPath.startsWith('/') 
+            ? `/${apiPath}` 
+            : apiPath;
+
+        // Validate API path (after normalization)
+        const pathValidation = validateApiPath(normalizedPath);
+        if (!pathValidation.valid) {
+            logger.logValidationError('path', pathValidation.error || '');
+            return badRequestResponse(pathValidation.error);
         }
+
+        // Validate HTTP method
+        if (!isValidHttpMethod(method)) {
+            logger.logValidationError('method', `Invalid HTTP method: ${method}`);
+            return badRequestResponse(`Invalid HTTP method: ${method}`);
+        }
+
+        // Validate status code
+        const finalStatusCode = statusCode || HTTP_STATUS.OK;
+        if (!isValidStatusCode(finalStatusCode)) {
+            logger.logValidationError('statusCode', `Invalid status code: ${finalStatusCode}`);
+            return badRequestResponse(`Invalid status code: ${finalStatusCode}`);
+        }
+
+        // Sanitize name
+        const sanitizedName = name ? sanitizeString(name, 100) : 'Untitled API';
 
         await connectDB();
 
-        // Check for duplicate path+method
-        const exists = await API.findOne({ path: apiPath, method });
+        // Check for duplicate path+method combination
+        const exists = await API.findOne({ 
+            path: normalizedPath, 
+            method: method.toUpperCase(),
+            projectId 
+        });
+        
         if (exists) {
-            return NextResponse.json({ error: 'API endpoint already exists' }, { status: 409 });
+            logger.warn('Duplicate API endpoint attempted', { path: normalizedPath, method, projectId });
+            return conflictResponse(ERROR_MESSAGES.DUPLICATE_API);
         }
 
-        const newApi = await API.create({
+        logger.logDbOperation('create', 'apis', { 
+            path: normalizedPath, 
+            method, 
+            projectId,
+            hasConditional: !!conditionalResponse 
+        });
+        
+        const apiData: any = {
             id: crypto.randomUUID(),
-            path: apiPath.startsWith('/') ? apiPath : `/${apiPath}`,
-            method,
-            statusCode: statusCode || 200,
+            path: normalizedPath,
+            method: method.toUpperCase(),
+            statusCode: finalStatusCode,
             responseBody,
-            name: name || 'Untitled API',
-            webhookUrl,
+            name: sanitizedName,
             projectId,
             requestBody,
             queryParams,
             conditionalResponse,
+        };
+        
+        if (webhookUrl) {
+            apiData.webhookUrl = sanitizeString(webhookUrl, 500);
+        }
+        
+        const newApi = (await API.create(apiData)) as any;
+
+        logger.info('API created successfully', { 
+            apiId: newApi.id, 
+            path: normalizedPath,
+            method: newApi.method,
+            hasConditional: !!conditionalResponse 
         });
-
-        console.log('✅ API created with ID:', newApi.id, 'Has conditional:', !!newApi.conditionalResponse);
-
-        return NextResponse.json(newApi, { status: 201 });
+        
+        return createdResponse(newApi);
     } catch (error) {
-        console.error('❌ Error creating API:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        logger.error('Error creating API', error);
+        return handleApiError(error);
     }
 }

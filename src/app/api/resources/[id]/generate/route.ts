@@ -1,53 +1,35 @@
+/**
+ * Resource Data Generation API Route
+ * 
+ * Refactored to follow SOLID principles:
+ * - Uses ResourceService for data generation
+ * - Business logic extracted from route
+ * - Cleaner, more maintainable code
+ */
+
 import { NextResponse } from 'next/server';
-import { generateFieldValue } from '@/lib/dataGenerator';
-import connectDB from '@/lib/mongodb';
-import { Resource, Database } from '@/models';
-import { ResourceField } from '@/types';
+import { getResourceService } from '@/container/Container';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
         const { count = 10 } = await request.json();
 
-        await connectDB();
+        const resourceService = getResourceService();
+        const result = await resourceService.generateData(id, count);
 
-        const resource = await Resource.findOne({ id }).lean();
-
-        if (!resource) {
-            return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+        if (!result.success) {
+            return NextResponse.json({ error: result.error }, { status: result.statusCode });
         }
 
-        // Get all database records for relation lookups
-        const allDbRecords = await Database.find().lean();
-        const db: any = {};
-        allDbRecords.forEach(record => {
-            db[record.resourceName] = record.data;
+        return NextResponse.json({ 
+            success: true, 
+            count: result.data?.length || 0, 
+            data: result.data 
         });
-
-        const items = [];
-
-        for (let i = 0; i < count; i++) {
-            const item: any = { id: crypto.randomUUID() };
-
-            for (const field of resource.fields) {
-                // Cast field to ResourceField to satisfy type checking
-                const typedField = field as unknown as ResourceField;
-                item[field.name] = generateFieldValue(typedField, db);
-            }
-
-            items.push(item);
-        }
-
-        // Update or create the database record for this resource
-        await Database.findOneAndUpdate(
-            { resourceName: resource.name },
-            { resourceName: resource.name, data: items },
-            { upsert: true, new: true }
-        );
-
-        return NextResponse.json({ success: true, count: items.length, data: items });
     } catch (error) {
-        console.error('Error generating data:', error);
+        logger.error('Error generating data:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

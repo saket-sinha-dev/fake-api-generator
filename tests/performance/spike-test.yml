@@ -1,0 +1,43 @@
+# Artillery Spike Test Configuration
+# Tests system behavior under sudden traffic spikes
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Baseline
+    - duration: 10
+      arrivalRate: 5
+      name: "Baseline"
+    # Sudden spike
+    - duration: 20
+      arrivalRate: 200
+      name: "Traffic spike"
+    # Recovery
+    - duration: 30
+      arrivalRate: 5
+      name: "Recovery"
+  
+  ensure:
+    maxErrorRate: 5  # Allow 5% error rate during spike
+    max: 5000        # Max response time 5s during spike
+  
+  http:
+    timeout: 10
+
+scenarios:
+  - name: "Spike Load Test"
+    flow:
+      - get:
+          url: "/api/resources"
+          expect:
+            - statusCode: 200
+      
+      - get:
+          url: "/api/apis"
+          expect:
+            - statusCode: 200
+      
+      - get:
+          url: "/api/v1/users"
+          expect:
+            - statusCode: [200, 404]

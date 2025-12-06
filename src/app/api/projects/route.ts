@@ -1,70 +1,76 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import connectDB from '@/lib/mongodb';
-import { Project } from '@/models';
+/**
+ * Projects API Route
+ * 
+ * Refactored to follow SOLID principles:
+ * - Uses ProjectService for business logic (Single Responsibility)
+ * - Depends on abstractions via Container (Dependency Inversion)
+ * - Route only handles HTTP concerns (separation of concerns)
+ */
+
+import { validateSession } from '@/lib/authHelpers';
+import { 
+  successResponse, 
+  createdResponse, 
+  unauthorizedResponse, 
+  badRequestResponse, 
+  conflictResponse,
+  handleApiError 
+} from '@/lib/apiResponse';
+import { logger } from '@/lib/logger';
+import { getProjectService } from '@/container/Container';
 
 export async function GET() {
     try {
-        const session = await auth();
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        logger.logRequest('GET', '/api/projects');
+        
+        const { valid, email, error } = await validateSession();
+        if (!valid || !email) {
+            return unauthorizedResponse(error);
         }
 
-        await connectDB();
+        const projectService = getProjectService();
+        const result = await projectService.getProjectsForUser(email);
 
-        const userEmail = session.user.email;
+        if (!result.success) {
+            return handleApiError(new Error(result.error));
+        }
 
-        // Find projects: user owns OR is a collaborator on
-        const projects = await Project.find({
-            $or: [
-                { userId: userEmail },
-                { collaborators: userEmail }
-            ]
-        }).lean();
-
-        return NextResponse.json(projects);
+        return successResponse(result.data);
     } catch (error) {
-        console.error('Error fetching projects:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        logger.error('Error fetching projects', error);
+        return handleApiError(error);
     }
 }
 
 export async function POST(request: Request) {
     try {
-        const session = await auth();
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        logger.logRequest('POST', '/api/projects');
+        
+        const { valid, email, error } = await validateSession();
+        if (!valid || !email) {
+            return unauthorizedResponse(error);
         }
 
         const body = await request.json();
         const { name, description } = body;
 
-        if (!name) {
-            return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
+        const projectService = getProjectService();
+        const result = await projectService.createProject(name, email, description);
+
+        if (!result.success) {
+            switch (result.statusCode) {
+                case 400:
+                    return badRequestResponse(result.error || 'Bad request');
+                case 409:
+                    return conflictResponse(result.error || 'Conflict');
+                default:
+                    return handleApiError(new Error(result.error || 'Unknown error'));
+            }
         }
 
-        await connectDB();
-
-        // Check for duplicate name for this user
-        const exists = await Project.findOne({ 
-            userId: session.user.email,
-            name: { $regex: new RegExp(`^${name}$`, 'i') }
-        });
-
-        if (exists) {
-            return NextResponse.json({ error: 'Project already exists' }, { status: 409 });
-        }
-
-        const newProject = await Project.create({
-            id: crypto.randomUUID(),
-            name,
-            description: description || '',
-            userId: session.user.email,
-        });
-
-        return NextResponse.json(newProject, { status: 201 });
+        return createdResponse(result.data);
     } catch (error) {
-        console.error('Error creating project:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        logger.error('Error creating project', error);
+        return handleApiError(error);
     }
 }

@@ -1,0 +1,52 @@
+# Artillery Stress Test Configuration
+# Tests system limits and breaking points
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Progressive load increase
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 100
+      name: "Ramp up"
+    - duration: 60
+      arrivalRate: 100
+      rampTo: 200
+      name: "High load"
+    - duration: 60
+      arrivalRate: 200
+      rampTo: 500
+      name: "Extreme load"
+    - duration: 30
+      arrivalRate: 500
+      name: "Breaking point"
+  
+  http:
+    timeout: 15
+  
+  # Track when system starts degrading
+  ensure:
+    maxErrorRate: 10  # Track when error rate exceeds 10%
+
+scenarios:
+  - name: "Stress Test"
+    flow:
+      # Mix of read and write operations
+      - get:
+          url: "/api/resources"
+      
+      - post:
+          url: "/api/resources"
+          json:
+            name: "stress_test_{{ $randomNumber(1000, 9999) }}"
+            fields: []
+            projectId: "stress-test"
+          expect:
+            - statusCode: [201, 400, 409, 500]
+      
+      - get:
+          url: "/api/v1/users?_page=1&_limit=100"
+          expect:
+            - statusCode: [200, 404, 500]
+
+processor: "./tests/performance/processor.js"
