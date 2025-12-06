@@ -30,6 +30,13 @@ export class ResourceService implements IService {
     try {
       const resources = await this.resourceRepository.find();
       
+      // Ensure fields is always an array for older documents
+      resources.forEach(resource => {
+        if (!Array.isArray(resource.fields)) {
+          resource.fields = [];
+        }
+      });
+      
       logger.info(`Fetched ${resources.length} resources`);
       
       return {

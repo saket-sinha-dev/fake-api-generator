@@ -24,6 +24,13 @@ export class ProjectService implements IService {
     try {
       const projects = await this.projectRepository.findByUser(email);
       
+      // Ensure collaborators is always an array for older documents
+      projects.forEach(project => {
+        if (!Array.isArray(project.collaborators)) {
+          project.collaborators = [];
+        }
+      });
+      
       logger.info(`Found ${projects.length} projects for user`, { email });
       
       return {

@@ -37,9 +37,10 @@ export default function Home() {
     try {
       const res = await fetch('/api/projects');
       const data = await res.json();
-      setProjects(data);
+      setProjects(Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []));
     } catch (err) {
       console.error(err);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -51,9 +52,11 @@ export default function Home() {
       const res = await fetch('/api/apis');
       const data = await res.json();
       // Filter by project
-      setApis(data.filter((api: MockApi) => api.projectId === selectedProject.id));
+      const apiData = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
+      setApis(apiData.filter((api: MockApi) => api.projectId === selectedProject.id));
     } catch (err) {
       console.error(err);
+      setApis([]);
     }
   };
 
@@ -63,9 +66,11 @@ export default function Home() {
       const res = await fetch('/api/resources');
       const data = await res.json();
       // Filter by project
-      setResources(data.filter((r: Resource) => r.projectId === selectedProject.id));
+      const resourceData = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
+      setResources(resourceData.filter((r: Resource) => r.projectId === selectedProject.id));
     } catch (err) {
       console.error(err);
+      setResources([]);
     }
   };
 

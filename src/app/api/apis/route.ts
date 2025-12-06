@@ -26,8 +26,14 @@ export async function GET() {
         
         const apis = await API.find().lean();
         
-        logger.info(`Fetched ${apis.length} APIs`);
-        return successResponse(apis);
+        // Ensure queryParams is always an array for older documents
+        const normalizedApis = apis.map(api => ({
+            ...api,
+            queryParams: Array.isArray(api.queryParams) ? api.queryParams : []
+        }));
+        
+        logger.info(`Fetched ${normalizedApis.length} APIs`);
+        return successResponse(normalizedApis);
     } catch (error) {
         logger.error('Error fetching APIs', error);
         return handleApiError(error);
@@ -123,7 +129,7 @@ export async function POST(request: Request) {
             name: sanitizedName,
             projectId,
             requestBody,
-            queryParams,
+            queryParams: Array.isArray(queryParams) ? queryParams : [],
             conditionalResponse,
         };
         

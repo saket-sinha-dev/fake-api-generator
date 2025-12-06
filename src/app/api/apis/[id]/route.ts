@@ -30,13 +30,19 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
             { id },
             { ...body, updatedAt: new Date() },
             { new: true }
-        );
+        ).lean();
 
         if (!updatedApi) {
             return NextResponse.json({ error: 'API not found' }, { status: 404 });
         }
 
-        return NextResponse.json(updatedApi);
+        // Ensure queryParams is always an array
+        const normalizedApi = {
+            ...updatedApi,
+            queryParams: Array.isArray(updatedApi.queryParams) ? updatedApi.queryParams : []
+        };
+
+        return NextResponse.json(normalizedApi);
     } catch (error) {
         console.error('Error updating API:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

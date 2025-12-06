@@ -164,7 +164,7 @@ export default function ShareModal({ project, onClose, onUpdate }: ShareModalPro
             </div>
 
             {/* Collaborators */}
-            {project.collaborators && project.collaborators.length > 0 ? (
+            {project.collaborators && Array.isArray(project.collaborators) && project.collaborators.length > 0 ? (
               project.collaborators.map((collaborator) => (
                 <div key={collaborator} className="share-collaborator-item">
                   <div className="share-collaborator-avatar">
