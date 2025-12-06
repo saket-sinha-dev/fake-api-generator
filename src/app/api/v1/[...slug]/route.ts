@@ -16,6 +16,166 @@ async function triggerWebhook(url: string, data: any) {
     }
 }
 
+// Helper to get nested value from object using path like "data.isEligible"
+function getNestedValue(obj: any, path: string): any {
+    return path.split('.').reduce((current, key) => current?.[key], obj);
+}
+
+// Helper to evaluate condition
+async function evaluateCondition(
+    condition: any,
+    request: Request,
+    requestBody: any,
+    url: URL,
+    pathParams?: Record<string, string>
+): Promise<boolean> {
+    const { type, key, operator, value, dependentApiId, dependentApiPath } = condition;
+
+    let actualValue: any;
+
+    // Get the actual value based on condition type
+    if (type === 'header') {
+        actualValue = request.headers.get(key || '');
+    } else if (type === 'query') {
+        actualValue = url.searchParams.get(key || '');
+    } else if (type === 'body') {
+        actualValue = key ? getNestedValue(requestBody, key) : requestBody;
+    } else if (type === 'dependentApi') {
+        // Call the dependent API first
+        if (!dependentApiId) return false;
+        
+        try {
+            const dependentApi = await API.findOne({ id: dependentApiId }).lean();
+            if (!dependentApi) return false;
+
+            // Build the dependent API URL
+            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+            let dependentPath = dependentApi.path;
+            
+            // Create a map to store values that can be used for path parameter replacement
+            const availableValues: Record<string, string> = {
+                ...pathParams,
+                ...(requestBody || {}),
+            };
+            
+            // Add query params to available values
+            url.searchParams.forEach((value, key) => {
+                availableValues[key] = value;
+            });
+            
+            // Replace path parameters (e.g., :versionId) with actual values
+            const pathParamMatches = dependentPath.match(/:(\w+)/g);
+            if (pathParamMatches) {
+                // First, check if we need to extract values from a response
+                // by making a preliminary API call (for chained dependent APIs)
+                let intermediateData: any = null;
+                
+                for (const paramWithColon of pathParamMatches) {
+                    const paramName = paramWithColon.substring(1); // Remove the ':'
+                    
+                    // If we don't have this value yet, try to extract it from dependent API response
+                    if (!availableValues[paramName]) {
+                        // Make a call without path params to get the data we need
+                        const tempPath = dependentPath.split(':')[0]; // Get path before first ':'
+                        
+                        if (tempPath !== dependentPath) {
+                            // This is a path with parameters, try calling without them first
+                            const tempUrl = new URL(`${baseUrl}/api/v1${tempPath.replace(/\/$/, '')}`);
+                            
+                            // Copy query parameters
+                            url.searchParams.forEach((value, key) => {
+                                tempUrl.searchParams.set(key, value);
+                            });
+                            
+                            console.log('🔄 Pre-calling API to get path param values:', tempUrl.toString());
+                            
+                            const preResponse = await fetch(tempUrl.toString(), {
+                                method: dependentApi.method,
+                                headers: request.headers as any,
+                            });
+                            
+                            if (preResponse.ok) {
+                                intermediateData = await preResponse.json();
+                                console.log('✅ Pre-call response received');
+                                
+                                // Try to extract versionId from first item in array
+                                if (Array.isArray(intermediateData) && intermediateData.length > 0) {
+                                    const firstItem = intermediateData[0];
+                                    if (firstItem[paramName]) {
+                                        availableValues[paramName] = String(firstItem[paramName]);
+                                        console.log(`📌 Extracted ${paramName} = ${availableValues[paramName]} from array response`);
+                                    }
+                                } else if (intermediateData[paramName]) {
+                                    availableValues[paramName] = String(intermediateData[paramName]);
+                                    console.log(`📌 Extracted ${paramName} = ${availableValues[paramName]} from response`);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Now replace all path parameters with available values
+                pathParamMatches.forEach((paramWithColon: string) => {
+                    const paramName = paramWithColon.substring(1);
+                    const paramValue = availableValues[paramName];
+                    
+                    if (paramValue) {
+                        dependentPath = dependentPath.replace(paramWithColon, paramValue);
+                        console.log(`🔧 Replaced ${paramWithColon} with ${paramValue}`);
+                    }
+                });
+            }
+            
+            // Build full URL with query parameters from original request
+            const dependentUrl = new URL(`${baseUrl}/api/v1${dependentPath}`);
+            
+            // Copy all query parameters from the original request to dependent API
+            url.searchParams.forEach((value, key) => {
+                dependentUrl.searchParams.set(key, value);
+            });
+
+            console.log('🔄 Calling dependent API:', dependentUrl.toString());
+
+            const dependentResponse = await fetch(dependentUrl.toString(), {
+                method: dependentApi.method,
+                headers: request.headers as any,
+            });
+
+            if (!dependentResponse.ok) {
+                console.error('❌ Dependent API failed with status:', dependentResponse.status);
+                return false;
+            }
+
+            const dependentData = await dependentResponse.json();
+            console.log('✅ Dependent API response:', JSON.stringify(dependentData).substring(0, 200));
+            
+            actualValue = dependentApiPath ? getNestedValue(dependentData, dependentApiPath) : dependentData;
+            console.log(`📊 Extracted value from path "${dependentApiPath}":`, actualValue);
+        } catch (e) {
+            console.error('❌ Dependent API call failed:', e);
+            return false;
+        }
+    }
+
+    // Evaluate the operator
+    switch (operator) {
+        case 'equals':
+            return actualValue == value;
+        case 'notEquals':
+            return actualValue != value;
+        case 'contains':
+            return typeof actualValue === 'string' && actualValue.includes(value);
+        case 'greaterThan':
+            return Number(actualValue) > Number(value);
+        case 'lessThan':
+            return Number(actualValue) < Number(value);
+        case 'exists':
+            return actualValue !== null && actualValue !== undefined;
+        default:
+            return false;
+    }
+}
+
 async function handleRequest(request: Request, { params }: { params: Promise<{ slug: string[] }> }) {
     try {
         const { slug } = await params;
@@ -40,10 +200,45 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ s
         });
 
         if (api) {
+            // Extract path parameters if the API path has dynamic segments
+            let pathParams: Record<string, string> = {};
+            try {
+                const fn = match(api.path, { decode: decodeURIComponent });
+                const matchResult = fn(requestPath);
+                if (matchResult && typeof matchResult === 'object' && 'params' in matchResult) {
+                    pathParams = matchResult.params as Record<string, string>;
+                }
+            } catch (e) {
+                // No path params
+            }
+
+            // Get request body if needed
+            const requestBody = requestMethod !== 'GET' && requestMethod !== 'HEAD' 
+                ? await request.clone().json().catch(() => null)
+                : null;
+
             // Trigger webhook if configured
             if (api.webhookUrl) {
-                const body = requestMethod !== 'GET' ? await request.json() : null;
-                triggerWebhook(api.webhookUrl, { method: requestMethod, path: requestPath, body });
+                triggerWebhook(api.webhookUrl, { method: requestMethod, path: requestPath, body: requestBody });
+            }
+
+            // Check if conditional response is configured
+            if (api.conditionalResponse) {
+                const { condition, responseIfTrue, responseIfFalse, statusCodeIfTrue, statusCodeIfFalse } = api.conditionalResponse;
+                
+                const conditionMet = await evaluateCondition(condition, request, requestBody, url, pathParams);
+                
+                const response = conditionMet ? responseIfTrue : responseIfFalse;
+                const statusCode = conditionMet 
+                    ? (statusCodeIfTrue || api.statusCode) 
+                    : (statusCodeIfFalse || api.statusCode);
+
+                // Handle null response body
+                if (response === null) {
+                    return new NextResponse(null, { status: statusCode });
+                }
+
+                return NextResponse.json(response, { status: statusCode });
             }
 
             // Handle null response body (e.g., 204 No Content)

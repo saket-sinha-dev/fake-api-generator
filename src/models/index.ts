@@ -77,14 +77,14 @@ export interface IResource extends Document {
 const ResourceSchema = new Schema<IResource>({
   id: { type: String, required: true, unique: true, index: true },
   name: { type: String, required: true, index: true },
-  fields: [{
-    id: String,
-    name: String,
-    type: String,
-    fakerMethod: String,
-    relationTo: String,
-    required: Boolean,
-  }],
+  fields: [new Schema({
+    id: { type: String },
+    name: { type: String },
+    type: { type: String },
+    fakerMethod: { type: String },
+    relationTo: { type: String },
+    required: { type: Boolean },
+  }, { _id: false })],
   projectId: { type: String, required: true, index: true },
   createdAt: { type: Date, default: Date.now },
 });
@@ -108,6 +108,20 @@ export interface IAPI extends Document {
   }>;
   webhookUrl?: string;
   projectId: string;
+  conditionalResponse?: {
+    condition: {
+      type: 'header' | 'query' | 'body' | 'dependentApi';
+      key?: string;
+      operator: 'equals' | 'notEquals' | 'contains' | 'greaterThan' | 'lessThan' | 'exists';
+      value?: any;
+      dependentApiId?: string;
+      dependentApiPath?: string;
+    };
+    responseIfTrue: any;
+    responseIfFalse: any;
+    statusCodeIfTrue?: number;
+    statusCodeIfFalse?: number;
+  };
   createdAt: Date;
 }
 
@@ -126,6 +140,23 @@ const APISchema = new Schema<IAPI>({
   }],
   webhookUrl: String,
   projectId: { type: String, required: true, index: true },
+  conditionalResponse: {
+    type: {
+      condition: {
+        type: { type: String, enum: ['header', 'query', 'body', 'dependentApi'] },
+        key: String,
+        operator: { type: String, enum: ['equals', 'notEquals', 'contains', 'greaterThan', 'lessThan', 'exists'] },
+        value: Schema.Types.Mixed,
+        dependentApiId: String,
+        dependentApiPath: String,
+      },
+      responseIfTrue: Schema.Types.Mixed,
+      responseIfFalse: Schema.Types.Mixed,
+      statusCodeIfTrue: Number,
+      statusCodeIfFalse: Number,
+    },
+    required: false
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

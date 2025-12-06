@@ -24,6 +24,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     try {
         const { id } = await params;
         const body = await request.json();
+        
+        // Parse fields if it's a string
+        if (body.fields && typeof body.fields === 'string') {
+            try {
+                body.fields = JSON.parse(body.fields);
+            } catch (e) {
+                return NextResponse.json({ error: 'Invalid fields format' }, { status: 400 });
+            }
+        }
+        
         await connectDB();
 
         const updatedResource = await Resource.findOneAndUpdate(

@@ -16,7 +16,12 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { path: apiPath, method, statusCode, responseBody, name, webhookUrl, projectId, requestBody, queryParams } = body;
+        const { path: apiPath, method, statusCode, responseBody, name, webhookUrl, projectId, requestBody, queryParams, conditionalResponse } = body;
+
+        console.log('📝 Creating API with conditionalResponse:', conditionalResponse ? 'YES' : 'NO');
+        if (conditionalResponse) {
+            console.log('🔍 Conditional Response:', JSON.stringify(conditionalResponse, null, 2));
+        }
 
         if (!apiPath || !method || !projectId) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -41,11 +46,14 @@ export async function POST(request: Request) {
             projectId,
             requestBody,
             queryParams,
+            conditionalResponse,
         });
+
+        console.log('✅ API created with ID:', newApi.id, 'Has conditional:', !!newApi.conditionalResponse);
 
         return NextResponse.json(newApi, { status: 201 });
     } catch (error) {
-        console.error('Error creating API:', error);
+        console.error('❌ Error creating API:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { Resource } from '@/types';
-import { Trash2, Play, Copy, Check, ExternalLink } from 'lucide-react';
+import { Trash2, Database, Play } from 'lucide-react';
 import { useState } from 'react';
 
 interface ResourceListProps {
@@ -12,7 +12,6 @@ interface ResourceListProps {
 
 export default function ResourceList({ resources, onDelete, onEdit }: ResourceListProps) {
     const [generating, setGenerating] = useState<string | null>(null);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
     const [showTestModal, setShowTestModal] = useState(false);
     const [testModalData, setTestModalData] = useState<{
         method: string;
@@ -47,12 +46,6 @@ export default function ResourceList({ resources, onDelete, onEdit }: ResourceLi
         } finally {
             setGenerating(null);
         }
-    };
-
-    const copyToClipboard = (text: string, id: string) => {
-        navigator.clipboard.writeText(text);
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
     };
 
     const openTestModal = (method: string, url: string, body: string, needsId: boolean, color: string) => {
@@ -90,9 +83,7 @@ export default function ResourceList({ resources, onDelete, onEdit }: ResourceLi
         return (
             <div className="text-center py-20 animate-fade-in">
                 <div className="inline-block p-6 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-3xl mb-4 animate-float">
-                    <svg className="w-20 h-20 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                    </svg>
+                    <Database className="w-20 h-20 mx-auto text-blue-500" />
                 </div>
                 <p className="text-xl font-semibold text-text-main mb-2 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">No Resources Created Yet</p>
                 <p className="text-muted">Click "Create Resource" to define your data models and start generating mock data</p>
@@ -472,168 +463,161 @@ export default function ResourceList({ resources, onDelete, onEdit }: ResourceLi
 
         {/* Resources List */}
         <div className="grid grid-cols-1 gap-4">
-            {resources.map((resource, index) => {
-                const fullUrl = `${window.location.origin}/api/v1/${resource.name}`;
-
-                return (
-                    <div 
-                        key={resource.id} 
-                        className="card flex flex-col gap-4 animate-fade-in hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group/card"
-                        style={{ animationDelay: `${index * 100}ms` }}
-                    >
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent animate-gradient">
-                                    {resource.name}
-                                </h3>
-                                <div className="flex items-center gap-3 flex-wrap">
-                                    <span className="badge badge-get animate-pulse-subtle shadow-lg">REST API</span>
-                                    <span className="text-text-main text-base font-mono font-medium hover:text-blue-400 transition-colors">/api/v1/{resource.name}</span>
-                                    <span className="text-sm px-3 py-1.5 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-white font-bold shadow-lg border border-white/10">
-                                        {resource.fields.length} fields
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleGenerate(resource.id)}
-                                    disabled={generating === resource.id}
-                                    className="text-gray-500 hover:text-green-400 transition-all duration-300 p-2 rounded-lg hover:bg-green-500/10 hover:scale-110 active:scale-95"
-                                    title="Generate Data"
-                                >
-                                    <Play size={18} />
-                                </button>
-                                <button
-                                    onClick={() => onDelete(resource.id)}
-                                    className="text-gray-500 hover:text-red-500 transition-all duration-300 p-2 rounded-lg hover:bg-red-500/10 hover:scale-110 hover:-rotate-12 active:scale-95"
-                                    title="Delete Resource"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-xl border border-blue-500/20 flex items-center justify-between group/url hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/20">
-                            <code className="text-sm text-blue-300 truncate flex-1 mr-4 font-medium hover:text-blue-200 transition-colors">
-                                {fullUrl}
-                            </code>
-                            <div className="flex gap-3 opacity-0 group-hover/url:opacity-100 transition-all duration-300 translate-x-2 group-hover/url:translate-x-0">
-                                <button
-                                    onClick={() => copyToClipboard(fullUrl, resource.id)}
-                                    className={`${copiedId === resource.id ? 'text-green-400 scale-110' : 'text-gray-400 hover:text-white'} transition-all duration-300 hover:scale-125 active:scale-95 p-2 rounded-lg hover:bg-white/10`}
-                                    title="Copy URL"
-                                >
-                                    {copiedId === resource.id ? <Check size={18} className="animate-bounce" /> : <Copy size={18} />}
-                                </button>
-                                <a
-                                    href={fullUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-gray-400 hover:text-white transition-all duration-300 hover:scale-125 active:scale-95 p-2 rounded-lg hover:bg-white/10 hover:rotate-12"
-                                    title="Open in new tab"
-                                >
-                                    <ExternalLink size={18} />
-                                </a>
-                            </div>
-                        </div>
-
-                        {resource.fields && resource.fields.length > 0 && (
-                            <div className="animate-slide-up">
-                                <div className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="w-1 h-4 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full animate-pulse"></span>
-                                    Resource Fields
-                                </div>
-                                <div className="flex flex-wrap gap-3">
-                                    {resource.fields.map((field, idx) => (
-                                        <span 
-                                            key={field.id} 
-                                            className="text-sm px-4 py-2 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 font-mono border border-blue-500/30 hover:border-blue-500 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/20 animate-fade-in"
-                                            style={{ animationDelay: `${idx * 50}ms` }}
-                                        >
-                                            <span className="text-blue-300 font-bold">{field.name}</span>
-                                            <span className="text-gray-400 mx-2">:</span>
-                                            <span className="text-emerald-400">{field.type}</span>
-                                            {field.required && <span className="text-red-400 ml-1 animate-pulse">*</span>}
+            {resources.map((resource, index) => (
+                <div 
+                    key={resource.id} 
+                    className="card flex flex-col gap-4 animate-fade-in hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group/card"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                >
+                    <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                            <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent animate-gradient">
+                                {resource.name}
+                            </h3>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <span className="badge badge-get animate-pulse-subtle shadow-lg">REST API</span>
+                                        <span className="text-text-main text-base font-mono font-medium hover:text-blue-400 transition-colors">/api/v1/{resource.name}</span>
+                                        <span className="text-sm px-3 py-1.5 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-white font-bold shadow-lg border border-white/10">
+                                            {resource.fields.length} fields
                                         </span>
-                                    ))}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => handleGenerate(resource.id)}
+                                        disabled={generating === resource.id}
+                                        className="text-gray-500 hover:text-green-400 transition-all duration-300 p-2 rounded-lg hover:bg-green-500/10 hover:scale-110 active:scale-95"
+                                        title="Generate Data"
+                                    >
+                                        <Play size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(resource.id)}
+                                        className="text-gray-500 hover:text-red-500 transition-all duration-300 p-2 rounded-lg hover:bg-red-500/10 hover:scale-110 hover:-rotate-12 active:scale-95"
+                                        title="Delete Resource"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
                                 </div>
                             </div>
-                        )}
 
-                        <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
-                            <div className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider flex items-center gap-2">
-                                <span className="w-1 h-4 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full animate-pulse"></span>
-                                📡 Available Endpoints
+                            {/* API Endpoint Display */}
+                            <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-xl border border-blue-500/20 flex items-center justify-between group/url hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/20">
+                                <code className="text-sm text-blue-300 truncate flex-1 mr-4 font-medium hover:text-blue-200 transition-colors">
+                                    {window.location.origin}/api/v1/{resource.name}
+                                </code>
+                                <div className="flex gap-3 opacity-0 group-hover/url:opacity-100 transition-all duration-300 translate-x-2 group-hover/url:translate-x-0">
+                                    <button
+                                        onClick={() => {
+                                            const fullUrl = `${window.location.origin}/api/v1/${resource.name}`;
+                                            navigator.clipboard.writeText(fullUrl);
+                                        }}
+                                        className="text-gray-400 hover:text-white transition-all duration-300 hover:scale-125 active:scale-95 p-2 rounded-lg hover:bg-white/10"
+                                        title="Copy URL"
+                                    >
+                                        <Play size={18} />
+                                    </button>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                {[
-                                    { method: 'GET', path: '', desc: 'Fetch all items (supports filtering, sorting, pagination)', color: 'blue', needsId: false },
-                                    { method: 'GET', path: '/:id', desc: 'Get single item by ID', color: 'blue', needsId: true },
-                                    { method: 'POST', path: '', desc: 'Create new item', color: 'green', needsId: false },
-                                    { method: 'PUT', path: '/:id', desc: 'Update item by ID', color: 'yellow', needsId: true },
-                                    { method: 'PATCH', path: '/:id', desc: 'Partially update item by ID', color: 'yellow', needsId: true },
-                                    { method: 'DELETE', path: '/:id', desc: 'Delete item by ID', color: 'red', needsId: true },
-                                ].map((endpoint, idx) => {
-                                    const endpointUrl = `${fullUrl}${endpoint.path}`;
-                                    const badgeClass = endpoint.color === 'blue' ? 'badge-get' :
-                                        endpoint.color === 'green' ? 'badge-post' :
-                                        endpoint.color === 'yellow' ? 'badge-put' : 'badge-delete';
-                                    
-                                    return (
-                                        <div key={idx} className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-white transition-all duration-200 group/endpoint flex items-center justify-between gap-3">
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                <span className={`badge ${badgeClass} text-xs flex-shrink-0`}>{endpoint.method}</span>
-                                                <code className="font-mono font-semibold text-gray-900">/api/v1/{resource.name}{endpoint.path}</code>
-                                                <span className="text-gray-500">- {endpoint.desc}</span>
-                                            </div>
-                                            <div className="flex gap-2 opacity-0 group-hover/endpoint:opacity-100 transition-opacity duration-200">
-                                                <button
-                                                    onClick={() => copyToClipboard(endpointUrl, `${resource.id}-endpoint-${idx}`)}
-                                                    className={`${copiedId === `${resource.id}-endpoint-${idx}` ? 'text-green-400 scale-110' : 'text-gray-400 hover:text-gray-700'} transition-all duration-200 hover:scale-110 p-1.5 rounded`}
-                                                    title="Copy URL"
+
+                            {/* Fields List */}
+                            {resource.fields && resource.fields.length > 0 && (
+                                <div className="animate-slide-up">
+                                    <div className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider flex items-center gap-2">
+                                        <span className="w-1 h-4 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full animate-pulse"></span>
+                                        Resource Fields
+                                    </div>
+                                    <div className="flex flex-wrap gap-3">
+                                        {resource.fields.map((field, idx) => (
+                                            <span 
+                                                key={field.id} 
+                                                className="text-sm px-4 py-2 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 font-mono border border-blue-500/30 hover:border-blue-500 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/20 animate-fade-in"
+                                                style={{ animationDelay: `${idx * 100}ms` }}
+                                            >
+                                                <span className="text-blue-300 font-bold">{field.name}</span>
+                                                <span className="text-gray-400 mx-1">:</span>
+                                                <span className="text-emerald-400">{field.type}</span>
+                                                {field.required && <span className="text-red-400 ml-1 animate-pulse">*</span>}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* REST Endpoints */}
+                            <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+                                <div className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-1 h-4 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full animate-pulse"></span>
+                                    📤 Available Endpoints
+                                </div>
+                                <div className="space-y-2">
+                                        {[
+                                            { method: 'GET', path: `/${resource.name}`, desc: 'Get all items', color: 'blue' },
+                                            { method: 'GET', path: `/${resource.name}/:id`, desc: 'Get single item', color: 'blue' },
+                                            { method: 'POST', path: `/${resource.name}`, desc: 'Create new item', color: 'green' },
+                                            { method: 'PUT', path: `/${resource.name}/:id`, desc: 'Update item', color: 'yellow' },
+                                            { method: 'DELETE', path: `/${resource.name}/:id`, desc: 'Delete item', color: 'red' }
+                                        ].map((endpoint, i) => {
+                                            const fullUrl = `${window.location.origin}/api/v1${endpoint.path}`;
+                                            const badgeClass = endpoint.color === 'blue' ? 'badge-get' :
+                                                endpoint.color === 'green' ? 'badge-post' :
+                                                endpoint.color === 'yellow' ? 'badge-put' : 'badge-delete';
+                                            
+                                            return (
+                                                <div 
+                                                    key={i} 
+                                                    className="flex items-center gap-3 p-3 bg-white/70 backdrop-blur-sm rounded-lg hover:bg-white hover:shadow-md transition-all duration-300 border border-gray-100 hover:border-gray-200"
+                                                    style={{ animationDelay: `${i * 50}ms` }}
                                                 >
-                                                    {copiedId === `${resource.id}-endpoint-${idx}` ? <Check size={14} /> : <Copy size={14} />}
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        if (endpoint.method === 'GET' && !endpoint.needsId) {
-                                                            window.open(endpointUrl, '_blank');
-                                                        } else {
-                                                            const sampleData = endpoint.method === 'POST' 
-                                                                ? JSON.stringify(resource.fields.reduce((acc, f) => ({
-                                                                    ...acc,
-                                                                    [f.name]: f.type === 'number' ? 1 : f.type === 'boolean' ? true : `sample_${f.name}`
-                                                                }), {}), null, 2)
-                                                                : (endpoint.method === 'PUT' || endpoint.method === 'PATCH')
-                                                                ? JSON.stringify(resource.fields.reduce((acc, f) => ({
-                                                                    ...acc,
-                                                                    [f.name]: f.type === 'number' ? 2 : f.type === 'boolean' ? false : `updated_${f.name}`
-                                                                }), {}), null, 2)
-                                                                : '';
-                                                            
-                                                            openTestModal(endpoint.method, endpointUrl, sampleData, endpoint.needsId, endpoint.color);
-                                                        }
-                                                    }}
-                                                    className={`text-white px-3 py-1 rounded text-xs font-semibold transition-all duration-200 hover:scale-105 ${
-                                                        endpoint.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
-                                                        endpoint.color === 'green' ? 'bg-green-500 hover:bg-green-600' :
-                                                        endpoint.color === 'yellow' ? 'bg-orange-500 hover:bg-orange-600' :
-                                                        'bg-red-500 hover:bg-red-600'
-                                                    }`}
-                                                    title={`Test ${endpoint.method} request`}
-                                                >
-                                                    <Play size={12} className="inline mr-1" />
-                                                    Test
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                                    <span className={`badge ${badgeClass} animate-pulse-subtle shadow-lg`}>{endpoint.method}</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <code className="text-gray-900 font-mono font-semibold text-sm block">
+                                                            /api/v1{endpoint.path}
+                                                        </code>
+                                                        <span className="text-gray-500 text-xs block mt-0.5">{endpoint.desc}</span>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (endpoint.method === 'GET' && !endpoint.path.includes(':id')) {
+                                                                    window.open(fullUrl, '_blank');
+                                                                } else {
+                                                                    const sampleData = endpoint.method === 'POST' 
+                                                                        ? JSON.stringify(resource.fields.reduce((acc, f) => ({
+                                                                            ...acc,
+                                                                            [f.name]: f.type === 'number' ? 1 : f.type === 'boolean' ? true : `sample_${f.name}`
+                                                                        }), {}), null, 2)
+                                                                        : endpoint.method === 'PUT'
+                                                                        ? JSON.stringify({ id: '1', ...resource.fields.reduce((acc, f) => ({
+                                                                            ...acc,
+                                                                            [f.name]: f.type === 'number' ? 2 : f.type === 'boolean' ? false : `updated_${f.name}`
+                                                                        }), {}) }, null, 2)
+                                                                        : '';
+                                                                    
+                                                                    const needsId = endpoint.path.includes(':id');
+                                                                    openTestModal(endpoint.method, fullUrl, sampleData, needsId, endpoint.color);
+                                                                }
+                                                            }}
+                                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 hover:scale-105 ${
+                                                                endpoint.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600 text-white' :
+                                                                endpoint.color === 'green' ? 'bg-green-500 hover:bg-green-600 text-white' :
+                                                                endpoint.color === 'yellow' ? 'bg-orange-500 hover:bg-orange-600 text-white' :
+                                                                'bg-red-500 hover:bg-red-600 text-white'
+                                                            }`}
+                                                            title={`Test ${endpoint.method} request`}
+                                                        >
+                                                            Test
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                         </div>
                     </div>
-                );
-            })}
+                </div>
+            ))}
         </div>
         </>
     );
