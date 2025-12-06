@@ -89,7 +89,7 @@ export default function ApiList({ apis, onDelete, onEdit }: ApiListProps) {
                         <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-xl border border-blue-500/20 flex items-center justify-between group/url hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/20">
                             <code className="text-sm text-blue-300 truncate flex-1 mr-4 font-medium hover:text-blue-200 transition-colors">
                                 {fullUrl}
-                                {api.queryParams && api.queryParams.length > 0 && (
+                                {api.queryParams && Array.isArray(api.queryParams) && api.queryParams.length > 0 && (
                                     <span className="text-emerald-400">
                                         ?{api.queryParams.map(p => `${p.key}=${p.value}`).join('&')}
                                     </span>
@@ -98,7 +98,7 @@ export default function ApiList({ apis, onDelete, onEdit }: ApiListProps) {
                             <div className="flex gap-3 opacity-0 group-hover/url:opacity-100 transition-all duration-300 translate-x-2 group-hover/url:translate-x-0">
                                 <button
                                     onClick={() => {
-                                        const urlWithParams = api.queryParams && api.queryParams.length > 0
+                                        const urlWithParams = api.queryParams && Array.isArray(api.queryParams) && api.queryParams.length > 0
                                             ? `${fullUrl}?${api.queryParams.map(p => `${p.key}=${p.value}`).join('&')}`
                                             : fullUrl;
                                         copyToClipboard(urlWithParams, api.id);
@@ -109,7 +109,7 @@ export default function ApiList({ apis, onDelete, onEdit }: ApiListProps) {
                                     {copiedId === api.id ? <Check size={18} className="animate-bounce" /> : <Copy size={18} />}
                                 </button>
                                 <a
-                                    href={api.queryParams && api.queryParams.length > 0
+                                    href={api.queryParams && Array.isArray(api.queryParams) && api.queryParams.length > 0
                                         ? `${fullUrl}?${api.queryParams.map(p => `${p.key}=${p.value}`).join('&')}`
                                         : fullUrl}
                                     target="_blank"
@@ -122,7 +122,7 @@ export default function ApiList({ apis, onDelete, onEdit }: ApiListProps) {
                             </div>
                         </div>
 
-                        {api.queryParams && api.queryParams.length > 0 && (
+                        {api.queryParams && Array.isArray(api.queryParams) && api.queryParams.length > 0 && (
                             <div className="animate-slide-up">
                                 <div className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider flex items-center gap-2">
                                     <span className="w-1 h-4 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full animate-pulse"></span>

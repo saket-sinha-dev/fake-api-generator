@@ -1,0 +1,48 @@
+# Ignore files for Docker build context
+.git
+.gitignore
+.env.local
+.env.*.local
+.env.docker
+.vscode
+.idea
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+.nyc_output
+tests
+
+# Next.js
+.next
+out
+
+# Production
+build
+dist
+
+# Documentation
+*.md
+!README.md
+FEATURES.md
+PROJECT_ORGANIZATION.md
+GOOGLE_AUTH_SETUP.md
+MONGODB_SETUP.md
+
+# Misc
+.DS_Store
+*.pem
+.cache
+
+# Docker
+docker-compose.yml
+Dockerfile.dev
+.dockerignore

@@ -1,0 +1,90 @@
+# Docker Compose for Fake API Generator
+# Supports both development and production environments
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: fake-api-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-fake_api_generator}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - fake-api-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # Application (Development)
+  app-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: fake-api-generator-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongodb:27017/fake_api_generator?authSource=admin}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    volumes:
+      - ..:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - fake-api-network
+    profiles:
+      - dev
+
+  # Application (Production)
+  app-prod:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runner
+    container_name: fake-api-generator-prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongodb:27017/fake_api_generator?authSource=admin}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - fake-api-network
+    profiles:
+      - prod
+
+volumes:
+  mongodb_data:
+    name: fake-api-mongodb-data
+  mongodb_config:
+    name: fake-api-mongodb-config
+
+networks:
+  fake-api-network:
+    name: fake-api-network
+    driver: bridge

@@ -17,7 +17,7 @@ interface ProjectListProps {
 export default function ProjectList({ projects, onSelect, onDelete, onEdit, selectedProjectId, onUpdate }: ProjectListProps) {
     const [shareProject, setShareProject] = useState<Project | null>(null);
 
-    if (projects.length === 0) {
+    if (!Array.isArray(projects) || projects.length === 0) {
         return (
             <div className="empty-state">
                 <FolderOpen size={64} className="empty-state-icon mx-auto" />

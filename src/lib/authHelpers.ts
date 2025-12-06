@@ -130,3 +130,28 @@ export async function hasProjectAccess(
 export function isProjectOwner(userEmail: string, project: { userId: string }): boolean {
   return project.userId === userEmail;
 }
+
+/**
+ * Hashes a password using bcrypt
+ */
+export async function hashPassword(password: string): Promise<string> {
+  const bcrypt = await import('bcryptjs');
+  const saltRounds = 12;
+  return bcrypt.hash(password, saltRounds);
+}
+
+/**
+ * Verifies a password against a hash
+ */
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  const bcrypt = await import('bcryptjs');
+  return bcrypt.compare(password, hash);
+}
+
+/**
+ * Generates a random session token
+ */
+export function generateSessionToken(): string {
+  const crypto = require('crypto');
+  return crypto.randomBytes(32).toString('base64');
+}

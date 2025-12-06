@@ -118,7 +118,7 @@ export default function AdminUserManagement() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {Array.isArray(users) && users.map((user) => (
               <tr key={user._id}>
                 <td>
                   <div className="user-info">
