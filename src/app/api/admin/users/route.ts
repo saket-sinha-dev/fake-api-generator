@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import connectDB from '@/lib/mongodb';
-import { UserProfile, Project, Resource, API, Database } from '@/models';
+import { UserProfile, Project } from '@/models';
 
 // Helper function to check if user is admin
 async function isAdmin(email: string): Promise<boolean> {

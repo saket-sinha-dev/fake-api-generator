@@ -1,0 +1,54 @@
+# Artillery Endurance Test Configuration
+# Tests system stability over extended period
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Extended sustained load - 1 hour
+    - duration: 3600
+      arrivalRate: 20
+      name: "Endurance test"
+  
+  ensure:
+    maxErrorRate: 1
+    max: 2000
+    median: 500
+  
+  http:
+    timeout: 10
+
+scenarios:
+  - name: "Endurance Test"
+    weight: 70
+    flow:
+      - get:
+          url: "/api/resources"
+          expect:
+            - statusCode: 200
+      
+      - think: 5
+      
+      - get:
+          url: "/api/v1/users?_page={{ $randomNumber(1, 10) }}&_limit=10"
+          expect:
+            - statusCode: [200, 404]
+      
+      - think: 3
+
+  - name: "Background Write Operations"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/resources"
+          json:
+            name: "endurance_{{ $randomNumber(10000, 99999) }}"
+            fields:
+              - name: "field1"
+                type: "string"
+            projectId: "endurance-test"
+          expect:
+            - statusCode: [201, 400, 409]
+      
+      - think: 10
+
+processor: "./tests/performance/processor.js"

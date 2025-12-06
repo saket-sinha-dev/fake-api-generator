@@ -55,8 +55,8 @@ export async function POST(request: Request) {
 
     // Update password and clear reset token
     user.password = hashedPassword;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    user.resetPasswordToken = null as any;
+    user.resetPasswordExpires = null as any;
     await user.save();
 
     return NextResponse.json(

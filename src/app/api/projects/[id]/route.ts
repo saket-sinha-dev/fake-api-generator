@@ -1,9 +1,17 @@
+/**
+ * Project Detail API Route
+ * 
+ * Refactored to follow SOLID principles:
+ * - Uses ProjectService for business logic
+ * - Cleaner separation between HTTP and business logic
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import connectDB from '@/lib/mongodb';
-import { Project } from '@/models';
+import { getProjectService } from '@/container/Container';
+import { logger } from '@/lib/logger';
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const session = await auth();
         if (!session?.user?.email) {
@@ -11,23 +19,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         }
 
         const { id } = await params;
-        await connectDB();
+        const projectService = getProjectService();
+        
+        const result = await projectService.deleteProject(id, session.user.email);
 
-        const project = await Project.findOne({ id });
-
-        if (!project) {
-            return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        if (!result.success) {
+            return NextResponse.json({ error: result.error }, { status: result.statusCode });
         }
 
-        // Only owner can delete
-        if (project.userId !== session.user.email) {
-            return NextResponse.json({ error: 'Only project owner can delete' }, { status: 403 });
-        }
-
-        await Project.deleteOne({ id });
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error deleting project:', error);
+        logger.error('Error deleting project:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -41,33 +43,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
         const { id } = await params;
         const body = await request.json();
-        await connectDB();
+        
+        const projectService = getProjectService();
+        const result = await projectService.updateProject(id, session.user.email, body);
 
-        const project = await Project.findOne({ id });
-
-        if (!project) {
-            return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        if (!result.success) {
+            return NextResponse.json({ error: result.error }, { status: result.statusCode });
         }
 
-        const userEmail = session.user.email;
-
-        // Check if user has access (owner or collaborator)
-        const hasAccess = project.userId === userEmail || 
-                         (project.collaborators && project.collaborators.includes(userEmail));
-
-        if (!hasAccess) {
-            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-        }
-
-        const updatedProject = await Project.findOneAndUpdate(
-            { id },
-            { ...body, updatedAt: new Date() },
-            { new: true }
-        );
-
-        return NextResponse.json(updatedProject);
+        return NextResponse.json(result.data);
     } catch (error) {
-        console.error('Error updating project:', error);
+        logger.error('Error updating project:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

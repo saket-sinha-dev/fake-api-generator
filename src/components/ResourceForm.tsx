@@ -136,7 +136,7 @@ export default function ResourceForm({ onSuccess, onCancel, initialData, project
                         </button>
                     </div>
 
-                    {fields.map((field, index) => (
+                    {fields.map((field, _index) => (
                         <div key={field.id} className="flex gap-2 mb-2 p-3 bg-dark-muted rounded">
                             <input
                                 type="text"

@@ -45,7 +45,7 @@ async function initializeAdmin() {
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
     // Create admin user
-    const adminUser = await UserProfileModel.create({
+    await UserProfileModel.create({
       email: adminEmail.toLowerCase(),
       password: hashedPassword,
       firstName: 'Admin',

@@ -16,7 +16,7 @@ import { Plus, ArrowLeft, LogOut, User, Shield } from 'lucide-react';
 type Tab = 'apis' | 'resources';
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);

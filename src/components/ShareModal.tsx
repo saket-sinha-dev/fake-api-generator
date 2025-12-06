@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Project } from '@/types';
 import { X, UserPlus, Trash2, Copy, Check, Users, Link as LinkIcon, Globe, Crown } from 'lucide-react';

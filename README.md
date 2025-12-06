@@ -1,6 +1,6 @@
 # Fake API Generator
 
-A powerful, feature-rich mock API generator with resource management, data generation, and advanced querying capabilities. Inspired by tools like Mocki.io and MockAPI.io.
+A powerful, feature-rich mock API generator with resource management, data generation, and advanced querying capabilities.
 
 ## 🚀 Features
 

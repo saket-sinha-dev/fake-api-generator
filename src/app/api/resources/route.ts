@@ -1,69 +1,71 @@
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import { Resource } from '@/models';
+/**
+ * Resources API Route
+ * 
+ * Refactored to follow SOLID principles:
+ * - Uses ResourceService for business logic (Single Responsibility)
+ * - Depends on abstractions via Container (Dependency Inversion)
+ * - Route only handles HTTP concerns (separation of concerns)
+ */
+
+import { 
+  successResponse, 
+  createdResponse, 
+  badRequestResponse, 
+  conflictResponse,
+  handleApiError 
+} from '@/lib/apiResponse';
+import { logger } from '@/lib/logger';
+import { getResourceService } from '@/container/Container';
 
 export async function GET() {
     try {
-        await connectDB();
-        const resources = await Resource.find().lean();
-        return NextResponse.json(resources);
+        logger.logRequest('GET', '/api/resources');
+        
+        const resourceService = getResourceService();
+        const result = await resourceService.getAllResources();
+
+        if (!result.success) {
+            return handleApiError(new Error(result.error));
+        }
+
+        return successResponse(result.data);
     } catch (error) {
-        console.error('Error fetching resources:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        logger.error('Error fetching resources', error);
+        return handleApiError(error);
     }
 }
 
 export async function POST(request: Request) {
     try {
+        logger.logRequest('POST', '/api/resources');
+        
         const body = await request.json();
-        let { name, fields, projectId } = body;
+        const { name, fields, projectId } = body;
 
-        console.log('📥 Received body:', JSON.stringify(body, null, 2));
-        console.log('📝 Fields type:', typeof fields);
-        console.log('📝 Fields is array?', Array.isArray(fields));
-        console.log('📝 Fields value:', fields);
+        logger.debug('Received resource creation request', { 
+            name, 
+            fieldsType: typeof fields,
+            isArray: Array.isArray(fields),
+            projectId 
+        });
 
-        if (!name || !fields || !projectId) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-        }
+        const resourceService = getResourceService();
+        const result = await resourceService.createResource(name, fields, projectId);
 
-        // Parse fields if it's a string
-        if (typeof fields === 'string') {
-            try {
-                fields = JSON.parse(fields);
-            } catch (e) {
-                return NextResponse.json({ error: 'Invalid fields format' }, { status: 400 });
+        if (!result.success) {
+            switch (result.statusCode) {
+                case 400:
+                    return badRequestResponse(result.error || 'Bad request');
+                case 409:
+                    return conflictResponse(result.error || 'Conflict');
+                default:
+                    return handleApiError(new Error(result.error || 'Unknown error'));
             }
         }
 
-        // Ensure fields is an array
-        if (!Array.isArray(fields)) {
-            console.error('❌ Fields is not an array:', fields);
-            return NextResponse.json({ error: 'Fields must be an array' }, { status: 400 });
-        }
-
-        console.log('✅ Fields after processing:', fields);
-
-        await connectDB();
-
-        // Check for duplicate name
-        const exists = await Resource.findOne({ 
-            name: { $regex: new RegExp(`^${name}$`, 'i') } 
-        });
-        if (exists) {
-            return NextResponse.json({ error: 'Resource already exists' }, { status: 409 });
-        }
-
-        const newResource = await Resource.create({
-            id: crypto.randomUUID(),
-            name: name.toLowerCase(),
-            fields,
-            projectId,
-        });
-
-        return NextResponse.json(newResource, { status: 201 });
+        return createdResponse(result.data);
     } catch (error) {
-        console.error('Error creating resource:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        logger.error('Error creating resource', error);
+        return handleApiError(error);
     }
 }

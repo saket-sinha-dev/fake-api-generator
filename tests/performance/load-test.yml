@@ -1,0 +1,170 @@
+# Artillery Performance Test Configuration
+# Tests API performance under various load scenarios
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm up"
+    # Ramp up phase
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: "Ramp up load"
+    # Sustained load
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained load"
+    # Spike test
+    - duration: 30
+      arrivalRate: 100
+      name: "Spike test"
+    # Cool down
+    - duration: 30
+      arrivalRate: 10
+      name: "Cool down"
+  
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1  # Max 1% error rate
+    max: 2000        # Max response time 2000ms (p99)
+    median: 500      # Median response time 500ms
+  
+  # HTTP settings
+  http:
+    timeout: 10
+  
+  # Variables for test data
+  variables:
+    projectId: "perf-test-project"
+    resourceName: "perf_users"
+
+# Test scenarios
+scenarios:
+  # Scenario 1: Read-heavy workload (GET requests)
+  - name: "Read API Endpoints"
+    weight: 60
+    flow:
+      # Get all projects
+      - get:
+          url: "/api/projects"
+          headers:
+            Cookie: "next-auth.session-token=test-token"
+          expect:
+            - statusCode: [200, 401]
+          capture:
+            - json: "$.data[0].id"
+              as: "projectId"
+      
+      # Get all resources
+      - get:
+          url: "/api/resources"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.data[0].name"
+              as: "resourceName"
+      
+      # Get all APIs
+      - get:
+          url: "/api/apis"
+          expect:
+            - statusCode: 200
+      
+      # Get resource data with pagination
+      - get:
+          url: "/api/v1/{{ resourceName }}?_page=1&_limit=10"
+          expect:
+            - statusCode: [200, 404]
+      
+      # Think time between requests
+      - think: 1
+
+  # Scenario 2: Write-heavy workload (POST/PUT/DELETE)
+  - name: "Write API Endpoints"
+    weight: 30
+    flow:
+      # Create project
+      - post:
+          url: "/api/projects"
+          headers:
+            Cookie: "next-auth.session-token=test-token"
+            Content-Type: "application/json"
+          json:
+            name: "Perf Test Project {{ $randomString() }}"
+            description: "Created during performance test"
+          expect:
+            - statusCode: [201, 401, 409]
+          capture:
+            - json: "$.data.id"
+              as: "createdProjectId"
+      
+      # Create resource
+      - post:
+          url: "/api/resources"
+          json:
+            name: "perf_resource_{{ $randomNumber(1000, 9999) }}"
+            fields:
+              - name: "name"
+                type: "string"
+              - name: "email"
+                type: "email"
+            projectId: "{{ projectId }}"
+          expect:
+            - statusCode: [201, 400, 409]
+      
+      # Create custom API
+      - post:
+          url: "/api/apis"
+          json:
+            path: "/perf-endpoint-{{ $randomNumber(1000, 9999) }}"
+            method: "GET"
+            statusCode: 200
+            responseBody:
+              message: "Performance test"
+            projectId: "{{ projectId }}"
+          expect:
+            - statusCode: [201, 400, 409]
+      
+      - think: 2
+
+  # Scenario 3: Complex queries (filtering, sorting, pagination)
+  - name: "Complex Queries"
+    weight: 10
+    flow:
+      # Paginated request
+      - get:
+          url: "/api/v1/{{ resourceName }}?_page={{ $randomNumber(1, 5) }}&_limit=20"
+          expect:
+            - statusCode: [200, 404]
+      
+      # Sorted request
+      - get:
+          url: "/api/v1/{{ resourceName }}?_sort=name&_order=asc"
+          expect:
+            - statusCode: [200, 404]
+      
+      # Filtered request
+      - get:
+          url: "/api/v1/{{ resourceName }}?age_gte=18&active=true"
+          expect:
+            - statusCode: [200, 404]
+      
+      # Search request
+      - get:
+          url: "/api/v1/{{ resourceName }}?_search=test"
+          expect:
+            - statusCode: [200, 404]
+      
+      # Combined query
+      - get:
+          url: "/api/v1/{{ resourceName }}?_page=1&_limit=10&_sort=name&age_gte=18"
+          expect:
+            - statusCode: [200, 404]
+      
+      - think: 1
+
+# Custom functions for generating test data
+processor: "./tests/performance/processor.js"

@@ -1,0 +1,37 @@
+{
+  "@types/node": {
+    "current": "20.19.25",
+    "wanted": "20.19.25",
+    "latest": "24.10.1",
+    "dependent": "FakeApiGenerator",
+    "location": "/Users/saket.sinha/Desktop/saket/my_stuffs/AntiGravity/FakeApiGenerator/node_modules/@types/node"
+  },
+  "lucide-react": {
+    "current": "0.555.0",
+    "wanted": "0.555.0",
+    "latest": "0.556.0",
+    "dependent": "FakeApiGenerator",
+    "location": "/Users/saket.sinha/Desktop/saket/my_stuffs/AntiGravity/FakeApiGenerator/node_modules/lucide-react"
+  },
+  "next-auth": {
+    "current": "5.0.0-beta.30",
+    "wanted": "5.0.0-beta.30",
+    "latest": "4.24.13",
+    "dependent": "FakeApiGenerator",
+    "location": "/Users/saket.sinha/Desktop/saket/my_stuffs/AntiGravity/FakeApiGenerator/node_modules/next-auth"
+  },
+  "react": {
+    "current": "19.2.0",
+    "wanted": "19.2.0",
+    "latest": "19.2.1",
+    "dependent": "FakeApiGenerator",
+    "location": "/Users/saket.sinha/Desktop/saket/my_stuffs/AntiGravity/FakeApiGenerator/node_modules/react"
+  },
+  "react-dom": {
+    "current": "19.2.0",
+    "wanted": "19.2.0",
+    "latest": "19.2.1",
+    "dependent": "FakeApiGenerator",
+    "location": "/Users/saket.sinha/Desktop/saket/my_stuffs/AntiGravity/FakeApiGenerator/node_modules/react-dom"
+  }
+}

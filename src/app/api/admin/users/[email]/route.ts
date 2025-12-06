@@ -11,7 +11,7 @@ async function isAdmin(email: string): Promise<boolean> {
 
 // DELETE /api/admin/users/[email] - Delete user and all their projects (admin only)
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ email: string }> }
 ) {
   try {
